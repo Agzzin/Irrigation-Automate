@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -7,10 +7,82 @@ import {
   TouchableOpacity,
   TextInput,
   Switch,
+  Animated,
+  KeyboardTypeOptions,
 } from "react-native";
+
+type FloatingLabelInputProps = {
+  label: string;
+  value: string;
+  onChangeText: (text: string) => void;
+  secureTextEntry?: boolean;
+  keyboardType?: KeyboardTypeOptions;
+  autoCapitalize?: "none" | "sentences" | "words" | "characters";
+  placeholderTextColor?: string;
+  [key: string]: any;
+};
+
+const FloatingLabelInput: React.FC<FloatingLabelInputProps> = ({
+  label,
+  value,
+  onChangeText,
+  secureTextEntry = false,
+  keyboardType = "default",
+  autoCapitalize = "sentences",
+  placeholderTextColor = "#aaa", 
+  ...props
+}) => {
+  const [isFocused, setIsFocused] = useState(false);
+  const animatedIsFocused = useRef(new Animated.Value(value ? 1 : 0)).current;
+
+  React.useEffect(() => {
+    Animated.timing(animatedIsFocused, {
+      toValue: isFocused || value ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  }, [isFocused, value]);
+
+  const labelStyle = {
+    position: "absolute" as const,
+    left: 30,
+    top: animatedIsFocused.interpolate({
+      inputRange: [0, 1],
+      outputRange: [18, -10],
+    }),
+    fontSize: animatedIsFocused.interpolate({
+      inputRange: [0, 1],
+      outputRange: [18, 14],
+    }),
+    color: isFocused ? "#00CB21" : placeholderTextColor,
+    backgroundColor: "#000",
+    paddingHorizontal: 4,
+    zIndex: 2,
+  };
+
+  return (
+    <View style={{ marginBottom: 24, marginHorizontal: 24, paddingTop: 8 }}>
+      <Animated.Text style={labelStyle}>{label}</Animated.Text>
+      <TextInput
+        style={styles.input}
+        value={value}
+        onChangeText={onChangeText}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
+        secureTextEntry={secureTextEntry}
+        keyboardType={keyboardType}
+        autoCapitalize={autoCapitalize}
+        placeholderTextColor={placeholderTextColor}
+        {...props}
+      />
+    </View>
+  );
+};
 
 const EmailLoginScreen = () => {
   const [rememberMe, setRememberMe] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   return (
     <View style={styles.container}>
@@ -26,18 +98,22 @@ const EmailLoginScreen = () => {
       </View>
 
       <View>
-        <TextInput
-          style={styles.input}
-          placeholder="E-mail"
-          placeholderTextColor="#aaa"
+        <FloatingLabelInput
+          label="E-mail"
+          value={email}
+          onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
+          placeholderTextColor="#fff"
         />
-        <TextInput
-          style={styles.input}
-          placeholder="Senha"
-          placeholderTextColor="#aaa"
+        <FloatingLabelInput
+          label="Senha"
+          value={password}
+          onChangeText={setPassword}
           secureTextEntry
+          keyboardType="default"
+          autoCapitalize="none"
+          placeholderTextColor="#fff"
         />
 
         <View style={styles.optionsRow}>
@@ -48,7 +124,7 @@ const EmailLoginScreen = () => {
               trackColor={{ false: "#767577", true: "#00CB21" }}
               thumbColor={rememberMe ? "#fff" : "#f4f3f4"}
               ios_backgroundColor="#3e3e3e"
-              style={{ transform: [{ scaleX: 1.0 }, { scaleY: 0.8 }] }} 
+              style={{ transform: [{ scaleX: 1.0 }, { scaleY: 0.8 }] }}
             />
             <Text style={styles.rememberMeText}>Lembrar-me</Text>
           </View>
@@ -104,9 +180,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 14,
     fontSize: 18,
-    marginBottom: 16,
-    marginHorizontal: 24,
-    borderWidth: 1,
+    borderWidth: 0,
     borderRadius: 8,
   },
   optionsRow: {
