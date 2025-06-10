@@ -16,7 +16,7 @@ const Routes = () => {
   }, []);
 
   return (
-    <Stack.Navigator initialRouteName="SignUpScreen" screenOptions={{ headerShown: false }}>
+    <Stack.Navigator initialRouteName="WelcomeScreen" screenOptions={{ headerShown: false }}>
       <Stack.Screen name="WelcomeScreen" component={WelcomeScreen} />
       <Stack.Screen name='EmailLoginScreen' component={EmailLoginScreen} />
       <Stack.Screen name='SignUpScreen' component={SignUpScreen} />
