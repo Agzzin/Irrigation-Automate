@@ -1,7 +1,30 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, Image, TouchableOpacity, Alert } from "react-native";
-import { GoogleSignin, GoogleSigninButton, statusCodes  } from '@react-native-google-signin/google-signin';
-import { GoogleUser } from '../types/GoogleUser';
+import { GoogleSignin, statusCodes  } from '@react-native-google-signin/google-signin';
+import {
+  LoginButton,
+  AccessToken,
+  GraphRequest,
+  GraphRequestManager,
+  Settings,
+  LoginManager
+} from 'react-native-fbsdk-next';
+
+interface UserProfile {
+  id: string;
+  name: string;
+  email?: string;
+  picture?: {
+    data: {
+      url: string;
+    };
+  };
+}
+
+interface FacebookLoginProps {
+  onLoginSuccess?: (userInfo: UserProfile) => void;
+  onLogoutSuccess?: () => void;
+}
 
 const WEB_CLIENT_ID = '363423156217-fablvceko5uld16gjqn0605kloag1vsr.apps.googleusercontent.com';
 
@@ -14,16 +37,19 @@ GoogleSignin.configure({
 const WelcomeScreen = () => {
   const [userInfo, setUserInfo] = useState<any | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [userInfoFacebook, setUserInfoFacebook] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
 
-  useEffect(() => {
+  // --- GOOGLE SIGN-IN ---
+  const configureGoogleSignIn = () => {
     GoogleSignin.configure({
       webClientId: WEB_CLIENT_ID,
       offlineAccess: true,
-      iosClientId: WEB_CLIENT_ID,
+      iosClientId: '363423156217-26chv84thgpuif38uh7i12fb9mpmkvot.apps.googleusercontent.com',
     });
-  }, []);
+  };
 
-  const HandleGoogleSignIn = async () => {
+  const handleGoogleSignIn = async () => {
     try {
       await GoogleSignin.hasPlayServices();
       const user = await GoogleSignin.signIn();
@@ -53,6 +79,73 @@ const WelcomeScreen = () => {
     }
   };
 
+  // --- FACEBOOK SIGN-IN ---
+  const handleFacebookLogin = async () => {
+    try {
+      const result = await LoginManager.logInWithPermissions(['public_profile', 'email']);
+      if (result.isCancelled) {
+        setError('Login do Facebook cancelado pelo usuário.');
+        return;
+      }
+      const data = await AccessToken.getCurrentAccessToken();
+      if (!data) {  
+        setError('Erro ao obter token de acesso do Facebook.');
+        return;
+      }
+      fetchFacebookProfile(data.accessToken);
+    } catch (error) {
+      setError('Erro ao fazer login com o Facebook.');
+      console.error('Facebook Login Error:', error);
+    }
+  };
+
+  const checkCurrentFacebookAccessToken = async () => {
+    try {
+      const currentAccessToken = await AccessToken.getCurrentAccessToken();
+      if (currentAccessToken) {
+        console.log('Token de acesso existente:', currentAccessToken.accessToken);
+        fetchFacebookProfile(currentAccessToken.accessToken);
+      }
+    } catch (error) {
+      console.error('Erro ao verificar token de acesso existente:', error);
+    }
+  };
+
+  const fetchFacebookProfile = (token: string) => {
+    setLoading(true);
+    const infoRequest = new GraphRequest(
+      '/me',
+      {
+        accessToken: token,
+        parameters: {
+          fields: {
+            string: 'id,name,email',
+          },
+        },
+      },
+      (error, result: any) => {
+        setLoading(false);
+        if (error) {
+          Alert.alert('Erro ao buscar perfil:', error.toString());
+          console.error('Erro ao buscar perfil do Facebook:', error);
+          setUserInfo(null);
+        } else {
+          const profile: UserProfile = result;
+          setUserInfo(profile);
+          console.log('Perfil do Facebook obtido:', profile);
+          setUserInfoFacebook(profile);
+        }
+      },
+    );
+    new GraphRequestManager().addRequest(infoRequest).start();
+  };
+
+  useEffect(() => {
+    Settings.initializeSDK();
+    configureGoogleSignIn();
+    checkCurrentFacebookAccessToken();
+  }, []);
+
   return (
     <View style={styles.container}>
     <View style={styles.view1}>
@@ -66,12 +159,12 @@ const WelcomeScreen = () => {
         <Text style={styles.subscribeText}>Continuar com e-mail</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.buttonAPIs} onPress={HandleGoogleSignIn}>
+      <TouchableOpacity style={styles.buttonAPIs} onPress={handleGoogleSignIn}>
         <Image source={require('../../assets/icons/google.png')} style={{ width: 24, height: 24 }} />
         <Text style={styles.subscribeText}>Continuar com o {'\n'}Google</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.buttonAPIs}>
+      <TouchableOpacity style={styles.buttonAPIs} onPress={handleFacebookLogin}>
         <Image source={require('../../assets/icons/facebook.png')} style={{ width: 24, height: 24 }} />
         <Text style={styles.subscribeText}>Continuar com o {'\n'}Facebook</Text>
       </TouchableOpacity>
@@ -88,7 +181,7 @@ const WelcomeScreen = () => {
         </Text>
       </View>
     </View>
-
+    
     </View>
   );
 };
