@@ -5,6 +5,7 @@ import EmailLoginScreen from '../screens/EmailLoginScreen';
 import RNBootSplash from "react-native-bootsplash";
 import SignUpScreen from '../screens/SignUpScreen';
 import { useEffect } from "react";
+import InitialPage from '../screens/InitialPageScreen';
 
 
 const Stack = createNativeStackNavigator();
@@ -16,10 +17,11 @@ const Routes = () => {
   }, []);
 
   return (
-    <Stack.Navigator initialRouteName="WelcomeScreen" screenOptions={{ headerShown: false }}>
+    <Stack.Navigator initialRouteName="InitialPage" screenOptions={{ headerShown: false }}>
       <Stack.Screen name="WelcomeScreen" component={WelcomeScreen} />
       <Stack.Screen name='EmailLoginScreen' component={EmailLoginScreen} />
       <Stack.Screen name='SignUpScreen' component={SignUpScreen} />
+      <Stack.Screen name='InitialPage' component={InitialPage} />
     </Stack.Navigator>
   );
 };

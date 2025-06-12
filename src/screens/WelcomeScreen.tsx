@@ -170,7 +170,6 @@ const WelcomeScreen = () => {
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.buttonAPIs}>
-        <Image source={require('../../assets/icons/apple.png')} style={{ width: 24, height: 24 }} />
         <Text style={styles.subscribeText}>Continuar com a {'\n'}Apple</Text>
       </TouchableOpacity>
 
