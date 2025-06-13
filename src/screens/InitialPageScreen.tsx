@@ -8,6 +8,8 @@ import Thermometer from '../../assets/icons/thermometer-half.svg';
 import Power from '../../assets/icons/power.svg';
 import Water from '../../assets/icons/water.svg';
 import {useState} from 'react';
+import Seta from '../../assets/icons/keyboard_arrow_right.svg'
+import { SearchBar } from 'react-native-screens';
 
 const InitialPageScreen = () => {
   const [switch1, setSwitch1] = useState(false);
@@ -65,8 +67,9 @@ const InitialPageScreen = () => {
       <View style={styles.ZonesIrrigationContainer}>
         <View style={styles.ZonesHeader}>
           <Text style={styles.ZonesIrrigationTitle}>Zonas</Text>
-          <TouchableOpacity>
+          <TouchableOpacity style={styles.Atalho}>
             <Text>Zonas</Text>
+            <Seta width={30} height={30}/>
           </TouchableOpacity>
         </View>
         <View style={styles.ZonesIrrigationQuantity}>
@@ -90,8 +93,9 @@ const InitialPageScreen = () => {
       <View style={styles.conectividade}>
         <View style={styles.conectHeader}>
           <Text style={styles.conecTitle}>Conectividade</Text>
-          <TouchableOpacity>
+          <TouchableOpacity style={styles.Atalho}>
             <Text style={styles.conectTouchable}>Automatico</Text>
+            <Seta width={30} height={30}/>
           </TouchableOpacity>
         </View>
         <View
@@ -372,6 +376,13 @@ const styles = StyleSheet.create({
   ZonesCaracteristicsTitle: {
     fontSize: 15,
     fontWeight: '500',
+  },
+
+  Atalho:{
+    display:'flex',
+    flexDirection:'row',
+    alignItems:'center',
+    justifyContent:'center'
   },
 
   conectividade: {
