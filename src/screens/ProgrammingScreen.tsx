@@ -1,9 +1,17 @@
 import React from 'react';
-import {View, Text, TouchableOpacity, StyleSheet, Switch} from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Switch,
+  TextInput,
+} from 'react-native';
 import Water from '../../assets/icons/droplet.svg';
-import { useState } from 'react';
-import AddCircle from '../../assets/icons/add-circle.svg'
-import { useForm, Controller } from 'react-hook-form';
+import {useState} from 'react';
+import AddCircle from '../../assets/icons/add-circle.svg';
+import {useForm} from 'react-hook-form';
+import CheckBox from '@react-native-community/checkbox';
 
 type FormData = {
   nome: string;
@@ -11,13 +19,16 @@ type FormData = {
 };
 
 const ProgrammingScreen = () => {
-
   const [switch1, setSwitch1] = useState(false);
-  const { control, handleSubmit, formState: { errors } } = useForm<FormData>();
+  const {
+    control,
+    handleSubmit,
+    formState: {errors},
+  } = useForm<FormData>();
 
-  const onSubmit = (data: FormData) => {
-  };
-
+  const onSubmit = (data: FormData) => {};
+  const [nomeProg, setNomeProg] = useState('');
+  const [isChecked, setIsChecked] = useState(false);
 
   return (
     <View style={styles.container}>
@@ -36,23 +47,23 @@ const ProgrammingScreen = () => {
             <Text style={styles.titleZones}>Manhã - Zona 1</Text>
 
             <View style={styles.viewAtr}>
-                <Text style={styles.textZones}>Seg, Qua, Sex</Text>
-                <Text style={styles.textMin}>20 min</Text>
-                <View style={styles.minutesZone}>
-             <Switch
-              value={switch1}
-              onValueChange={setSwitch1}
-              trackColor={{false: '#767577', true: '#276C32'}}
-              thumbColor={switch1 ? '#fff' : '#f4f3f4'}
-              ios_backgroundColor="#3e3e3e"
-              style={{transform: [{scaleX: 1.2}, {scaleY: 1.2}], marginLeft:50,}}
-              />
+              <Text style={styles.textZones}>Seg, Qua, Sex</Text>
+              <Text style={styles.textMin}>20 min</Text>
+              <View style={styles.minutesZone}>
+                <Switch
+                  value={switch1}
+                  onValueChange={setSwitch1}
+                  trackColor={{false: '#767577', true: '#276C32'}}
+                  thumbColor={switch1 ? '#fff' : '#f4f3f4'}
+                  ios_backgroundColor="#3e3e3e"
+                  style={{
+                    transform: [{scaleX: 1.2}, {scaleY: 1.2}],
+                    marginLeft: 50,
+                  }}
+                />
+              </View>
             </View>
-            </View>
-
           </View>
-
-         
         </View>
         <View style={styles.caracZones}>
           <TouchableOpacity style={styles.waterAtr}>
@@ -63,29 +74,29 @@ const ProgrammingScreen = () => {
             <Text style={styles.titleZones}>Tarde - Zona 3</Text>
 
             <View style={styles.viewAtr}>
-                <Text style={styles.textZones}>Seg, Qua, Sex</Text>
-                <Text style={styles.textMin}>10 min</Text>
-                <View style={styles.minutesZone}>
-             <Switch
-              value={switch1}
-              onValueChange={setSwitch1}
-              trackColor={{false: '#767577', true: '#276C32'}}
-              thumbColor={switch1 ? '#fff' : '#f4f3f4'}
-              ios_backgroundColor="#3e3e3e"
-              style={{transform: [{scaleX: 1.2}, {scaleY: 1.2}], marginLeft:50,}}
-              />
+              <Text style={styles.textZones}>Seg, Qua, Sex</Text>
+              <Text style={styles.textMin}>10 min</Text>
+              <View style={styles.minutesZone}>
+                <Switch
+                  value={switch1}
+                  onValueChange={setSwitch1}
+                  trackColor={{false: '#767577', true: '#276C32'}}
+                  thumbColor={switch1 ? '#fff' : '#f4f3f4'}
+                  ios_backgroundColor="#3e3e3e"
+                  style={{
+                    transform: [{scaleX: 1.2}, {scaleY: 1.2}],
+                    marginLeft: 50,
+                  }}
+                />
+              </View>
             </View>
-            </View>
-
           </View>
-
-         
         </View>
         <View>
-            <TouchableOpacity style={styles.novaP}>
-                <AddCircle width={25} height={25}/>
-                <Text style={styles.TouchNew}>Nova Programação</Text>
-            </TouchableOpacity>
+          <TouchableOpacity style={styles.novaP}>
+            <AddCircle width={25} height={25} />
+            <Text style={styles.TouchNew}>Nova Programação</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -93,9 +104,177 @@ const ProgrammingScreen = () => {
         <Text style={styles.textAtributes}>Nova Programação</Text>
 
         <View style={styles.newInputs}>
-            
-        </View>
+          <Text style={styles.label}>Nome</Text>
+          <TextInput
+            style={styles.inputNovaProg}
+            placeholder="Nome da programação"
+            value={''}
+            onChangeText={setNomeProg}
+            placeholderTextColor="#888"
+          />
+          <Text style={styles.label}>Zonas</Text>
+          <View style={styles.containerCheck}>
+            <CheckBox
+              value={isChecked}
+              onValueChange={setIsChecked}
+              tintColors={{true: '#00f', false: '#aaa'}}
+            />
+            <Text style={styles.numberZones}>Zona1</Text>
+            <CheckBox
+              value={isChecked}
+              onValueChange={setIsChecked}
+              tintColors={{true: '#00f', false: '#aaa'}}
+            />
+            <Text style={styles.numberZones}>Zona 2</Text>
+            <CheckBox
+              value={isChecked}
+              onValueChange={setIsChecked}
+              tintColors={{true: '#00f', false: '#aaa'}}
+            />
+            <Text style={styles.numberZones}>Zona 3</Text>
+          </View>
 
+          <Text
+            style={{
+              fontWeight: '500',
+              marginLeft: 10,
+              fontSize: 16,
+              marginTop: 10,
+              marginBottom: 5,
+            }}>
+            Dias da semana
+          </Text>
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              marginTop: 10,
+            }}>
+            <TouchableOpacity style={styles.daysIrrig}>
+              <Text style={styles.Textdays}>Seg</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.daysIrrig}>
+              <Text style={styles.Textdays}>Ter</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.daysIrrig}>
+              <Text style={styles.Textdays}>Qua</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.daysIrrig}>
+              <Text style={styles.Textdays}>Qui</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.daysIrrig}>
+              <Text style={styles.Textdays}>Sex</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.daysIrrig}>
+              <Text style={styles.Textdays}>Sab</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.daysIrrig}>
+              <Text style={styles.Textdays}>Dom</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View>
+            <View style={{flexDirection: 'row', gap: 80}}>
+              <Text
+                style={{
+                  fontSize: 16,
+                  marginLeft: 10,
+                  marginTop: 10,
+                  fontWeight: '500',
+                }}>
+                Horario de Inicio
+              </Text>
+              <Text
+                style={{
+                  fontSize: 16,
+                  marginLeft: 10,
+                  marginTop: 10,
+                  fontWeight: '500',
+                }}>
+                Duração da
+              </Text>
+            </View>
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                width: '97%',
+                marginTop: 5,
+              }}>
+              <TextInput
+                style={styles.inputInitial}
+                placeholder="Agende um horario"
+                value={''}
+                onChangeText={setNomeProg}
+                placeholderTextColor="#888"
+              />
+              <TextInput
+                style={styles.inputInitial}
+                placeholder="Agende um horario"
+                value={''}
+                onChangeText={setNomeProg}
+                placeholderTextColor="#888"
+              />
+            </View>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                marginTop: 10,
+                marginLeft: 10,
+                justifyContent: 'space-between',
+                marginRight: 10,
+                marginBottom: 15,
+              }}>
+              <Text style={{fontSize: 16, fontWeight: '400'}}>
+                Pausar se tiver previsão de chuva
+              </Text>
+              <Switch
+                value={switch1}
+                onValueChange={setSwitch1}
+                trackColor={{false: '#767577', true: '#276C32'}}
+                thumbColor={switch1 ? '#fff' : '#f4f3f4'}
+                ios_backgroundColor="#3e3e3e"
+                style={{
+                  transform: [{scaleX: 1.2}, {scaleY: 1.2}],
+                }}
+              />
+            </View>
+          </View>
+        </View>
+        <View
+          style={{
+            marginTop: 5,
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            width: '90%',
+          }}>
+          <TouchableOpacity
+            style={{
+              width: '45%',
+              borderWidth: 0.3,
+              borderColor: 'gray',
+              borderRadius: 10,
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 10,
+            }}>
+            <Text style={{fontWeight:'bold', fontSize:17,}}>Cancelar</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+          style={{
+              width: '45%',
+              borderWidth: 0.3,
+              borderColor: 'gray',
+              borderRadius: 10,
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 10,
+              backgroundColor:'#296C32'
+            }}>
+            <Text style={{fontWeight:'bold', fontSize:17, color:'#ffffff'}}>Salvar</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -140,13 +319,12 @@ const styles = StyleSheet.create({
     paddingLeft: 10,
     marginTop: 5,
     paddingTop: 10,
-    flexDirection:'row',
-    width:'100%',
-    borderWidth:0.2,
-    borderColor:'gray',
-    borderRadius:10,
-    paddingBottom:10,
-
+    flexDirection: 'row',
+    width: '100%',
+    borderWidth: 0.2,
+    borderColor: 'gray',
+    borderRadius: 10,
+    paddingBottom: 10,
   },
 
   waterAtr: {
@@ -156,69 +334,139 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 50,
-    
   },
 
-  atrZones:{
-    marginLeft:20,
+  atrZones: {
+    marginLeft: 20,
   },
 
-  titleZones:{
-    fontWeight:'800',
-    fontSize:20,
+  titleZones: {
+    fontWeight: '800',
+    fontSize: 20,
   },
 
-  textZones:{
-    fontSize:18,
-    fontWeight:'500'
+  textZones: {
+    fontSize: 18,
+    fontWeight: '500',
   },
 
-  viewAtr:{
-    display:'flex',
-    flexDirection:'row',
-    alignItems:'center',
-    justifyContent:'center',
+  viewAtr: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
-  textMin:{
-    fontWeight:'500',
-    marginLeft:30,
-    fontSize:16,
+  textMin: {
+    fontWeight: '500',
+    marginLeft: 30,
+    fontSize: 16,
   },
 
-  minutesZone:{
-    display:'flex',
-    flexDirection:'row',
-    gap:20,
+  minutesZone: {
+    display: 'flex',
+    flexDirection: 'row',
+    gap: 20,
   },
 
-  novaP:{
-    flexDirection:'row',
-    width:'95%',
-    backgroundColor:'#296C32',
-    borderRadius:10,
-    alignItems:'center',
-    justifyContent:'center',
-    marginTop:15,
-    gap:8,
-    padding:10,
+  novaP: {
+    flexDirection: 'row',
+    width: '95%',
+    backgroundColor: '#296C32',
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 15,
+    gap: 8,
+    padding: 10,
   },
 
-  TouchNew:{
-    fontSize:18,
-    color:'#ffffff',
+  TouchNew: {
+    fontSize: 18,
+    color: '#ffffff',
   },
 
-  newAtributes:{
-    marginTop:25,
-    width:'100%',
-    marginLeft:20,
+  newAtributes: {
+    marginTop: 25,
+    width: '100%',
+    marginLeft: 20,
   },
 
-  textAtributes:{
-    fontSize:20,
-    fontWeight:'bold'
-  }
+  textAtributes: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+
+  newInputs: {
+    borderWidth: 0.2,
+    borderColor: 'gray',
+    borderRadius: 10,
+    width: '90%',
+    marginTop: 15,
+    display: 'flex',
+  },
+
+  label: {
+    fontSize: 16,
+    marginLeft: 10,
+    marginTop: 10,
+    fontWeight: '500',
+  },
+
+  inputNovaProg: {
+    borderWidth: 0.3,
+    borderRadius: 10,
+    borderColor: 'gray',
+    marginLeft: 10,
+    marginTop: 10,
+    width: '95%',
+  },
+
+  containerCheck: {
+    display: 'flex',
+    flexDirection: 'row',
+    marginTop: 5,
+    paddingLeft: 7,
+    paddingRight: 7,
+    alignItems: 'center',
+    gap: 22,
+  },
+
+  numberZones: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+
+  atributesZones: {
+    marginTop: 10,
+    marginLeft: 10,
+  },
+
+  daysSemana: {
+    fontSize: 17,
+    fontWeight: '500',
+    marginBottom: 5,
+  },
+
+  daysIrrig: {
+    backgroundColor: '#296C32',
+    marginHorizontal: 5,
+    padding: 9,
+    borderRadius: 5,
+  },
+
+  Textdays: {
+    color: '#ffffff',
+  },
+
+  inputInitial: {
+    borderWidth: 0.3,
+    borderColor: 'gray',
+    borderRadius: 10,
+    width: '40%',
+    marginLeft: 10,
+    marginTop: 5,
+  },
 });
 
 export default ProgrammingScreen;
