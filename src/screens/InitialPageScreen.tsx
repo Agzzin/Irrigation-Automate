@@ -9,7 +9,6 @@ import Power from '../../assets/icons/power.svg';
 import Water from '../../assets/icons/water.svg';
 import {useState} from 'react';
 import Seta from '../../assets/icons/keyboard_arrow_right.svg'
-import { SearchBar } from 'react-native-screens';
 
 const InitialPageScreen = () => {
   const [switch1, setSwitch1] = useState(false);
