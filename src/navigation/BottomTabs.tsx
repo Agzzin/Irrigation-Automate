@@ -12,6 +12,7 @@ export default function BottomTabs() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
+        headerShown:false,
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: string = '';
           if (route.name === 'Inicio') {

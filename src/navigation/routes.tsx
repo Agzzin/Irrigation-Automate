@@ -21,7 +21,7 @@ const Routes = () => {
 
   return (
     <Stack.Navigator
-      initialRouteName="BottomTabs"
+      initialRouteName="SmsPage"
       screenOptions={{headerShown: false}}>
       <Stack.Screen name="BottomTabs" component={BottomTabs} />
       <Stack.Screen name="WelcomeScreen" component={WelcomeScreen} />
