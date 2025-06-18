@@ -11,6 +11,7 @@ import HistoryScreen from '../screens/HistoryScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import SmsScreen from '../screens/oAuthSmsScreen';
 import BottomTabs from './BottomTabs';
+import SmsConfirmScreen from '../screens/oAuthSmsConfScreen'
 
 const Stack = createNativeStackNavigator();
 
@@ -21,7 +22,7 @@ const Routes = () => {
 
   return (
     <Stack.Navigator
-      initialRouteName="SmsPage"
+      initialRouteName="SmsPageConfirm"
       screenOptions={{headerShown: false}}>
       <Stack.Screen name="BottomTabs" component={BottomTabs} />
       <Stack.Screen name="WelcomeScreen" component={WelcomeScreen} />
@@ -32,6 +33,7 @@ const Routes = () => {
       <Stack.Screen name="HistoryPage" component={HistoryScreen} />
       <Stack.Screen name="SettingsPage" component={SettingsScreen} />
       <Stack.Screen name="SmsPage" component={SmsScreen} />
+      <Stack.Screen name="SmsPageConfirm" component={SmsConfirmScreen} />
     </Stack.Navigator>
   );
 };

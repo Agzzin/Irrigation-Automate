@@ -19,14 +19,6 @@ const SmsScreen = () => {
 
   const hasText = text.length > 0;
 
-  const handleSendCode = async () => {
-    try {
-      const confirmation = await auth().signInWithPhoneNumber(phoneNumber);
-      setConfirm(confirmation);
-    } catch (error: any) {
-      Alert.alert('Erro ao enviar SMS', error.message);
-    }
-  };
 
   const handleConfirmCode = async () => {
     try {
@@ -43,7 +35,7 @@ const SmsScreen = () => {
     <View style={{flex: 1, alignItems: 'center', backgroundColor: '#000000'}}>
       <View style={{marginTop: 80, alignItems: 'center'}}>
         <Image
-          source={require('../../assets/icons/verifyNumberSemVer.png')}
+          source={require('../../assets/icons/verifynumber.png')}
           style={{width: 430, height: 280}}
         />
         <Text
@@ -53,7 +45,7 @@ const SmsScreen = () => {
             color: '#ffffff',
             marginTop: 20,
           }}>
-          Login com número de telefone
+          Insira o codigo de validação
         </Text>
         <Text
           style={{
@@ -62,15 +54,15 @@ const SmsScreen = () => {
             marginTop: 5,
             marginBottom: 25,
           }}>
-          Informe seu celular para enviarmos um {'\n'} código de verificação.
+          Confirme o codigo de vericação{'\n'} enviado em sua caixa de mensagens
         </Text>
         <TextInput
           style={{
             borderBottomWidth: 1,
             borderColor: '#296C32',
-            color: hasText ? '#ffffff' : '#ffffff', 
+            color: hasText ? '#ffffff' : '#ffffff',
           }}
-          placeholder="Ex: 99 999999999"
+          placeholder="Ex: 555555"
           placeholderTextColor="#ffffff"
           keyboardType="numeric"
           onFocus={() => setIsFocused(true)}
@@ -86,14 +78,25 @@ const SmsScreen = () => {
             backgroundColor: '#296C32',
             paddingHorizontal: 40,
             borderRadius: 10,
-          }} onPress={handleSendCode}>
+          }}
+          onPress={handleConfirmCode}>
           <Text style={{color: '#ffffff', fontSize: 16, fontWeight: 'bold'}}>
-            Enviar verificação
+            Confirmar verificação
           </Text>
         </TouchableOpacity>
 
-        <Text style={{color:'#ffffff', textAlign:'center', fontSize:14, marginTop:60,}}>Usamos seu número apenas para verificação de segurança.</Text>
-        <Text style={{color:'#296C32', textAlign:'center', fontSize:14}}>verificação de segurança.</Text>
+        <Text
+          style={{
+            color: '#ffffff',
+            textAlign: 'center',
+            fontSize: 14,
+            marginTop: 60,
+          }}>
+          Seus dados estão protegidos. 
+        </Text>
+        <Text style={{color: '#296C32', textAlign: 'center', fontSize: 14}}>
+          Nunca compartilharemos seu número.
+        </Text>
       </View>
     </View>
   );
