@@ -22,7 +22,7 @@ const Routes = () => {
 
   return (
     <Stack.Navigator
-      initialRouteName="SmsPageConfirm"
+      initialRouteName="InitialPage"
       screenOptions={{headerShown: false}}>
       <Stack.Screen name="BottomTabs" component={BottomTabs} />
       <Stack.Screen name="WelcomeScreen" component={WelcomeScreen} />

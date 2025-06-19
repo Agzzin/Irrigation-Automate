@@ -1,5 +1,12 @@
-import React from 'react';
-import {View, Text, StyleSheet, TouchableOpacity, Switch} from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Switch,
+} from 'react-native';
+
 import WifiIcon from '../../assets/icons/wifi.svg';
 import WaterDrop from '../../assets/icons/water_drop.svg';
 import SoilMoisture from '../../assets/icons/soil-moisture.svg';
@@ -7,14 +14,33 @@ import CloudSun from '../../assets/icons/cloud-sun.svg';
 import Thermometer from '../../assets/icons/thermometer-half.svg';
 import Power from '../../assets/icons/power.svg';
 import Water from '../../assets/icons/water.svg';
-import {useState} from 'react';
-import Seta from '../../assets/icons/keyboard_arrow_right.svg'
+import Seta from '../../assets/icons/keyboard_arrow_right.svg';
 
 const InitialPageScreen = () => {
   const [switch1, setSwitch1] = useState(false);
-  const [switch2, setSwitch2] = useState(false);
-  const [switch3, setSwitch3] = useState(false);
-  const [switch4, setSwitch4] = useState(false);
+
+  // Estados dinâmicos
+  const [soilMoisture, setSoilMoisture] = useState<number | null>(null);
+  const [temperature, setTemperature] = useState<number | null>(null);
+  const [weather, setWeather] = useState<string>('');
+
+  // Buscar dados do sensor
+  useEffect(() => {
+    const fetchSensorData = async () => {
+      try {
+        const response = await fetch('http://192.168.0.100/sensor'); 
+        const data = await response.json();
+
+        setSoilMoisture(data.soilMoisture);
+        setTemperature(data.temperature);
+        setWeather(data.weather);
+      } catch (error) {
+        console.error('Erro ao buscar dados do sensor:', error);
+      }
+    };
+
+    fetchSensorData();
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -22,6 +48,7 @@ const InitialPageScreen = () => {
         <Text style={styles.dashboardText}>DASHBOARD</Text>
         <WifiIcon width={24} height={24} />
       </View>
+
       <View style={styles.statusContainer}>
         <Text style={styles.statusText}>Status Atual</Text>
         <View style={styles.irrigationInfo}>
@@ -42,19 +69,25 @@ const InitialPageScreen = () => {
         <View style={styles.umidade}>
           <Text style={styles.umidadeText}>Umidade {'\n'} do Solo</Text>
           <SoilMoisture width={50} height={50} />
-          <Text style={styles.umidadeValue}>45%</Text>
+          <Text style={styles.umidadeValue}>
+            {soilMoisture !== null ? `${soilMoisture}%` : '---'}
+          </Text>
         </View>
 
         <View style={styles.previsao}>
           <Text style={styles.previsaoText}>Previsão</Text>
           <CloudSun width={50} height={50} />
-          <Text style={styles.previsaoText}>Parcial.{'\n'}nublado</Text>
+          <Text style={styles.previsaoText}>
+            {weather || '---'}
+          </Text>
         </View>
 
         <View style={styles.temperatura}>
           <Thermometer width={50} height={50} />
           <Text style={styles.temperaturaText}>Temperatura</Text>
-          <Text style={styles.temperaturaValue}>22°C</Text>
+          <Text style={styles.temperaturaValue}>
+            {temperature !== null ? `${temperature}°C` : '---'}
+          </Text>
         </View>
       </View>
 
@@ -68,9 +101,10 @@ const InitialPageScreen = () => {
           <Text style={styles.ZonesIrrigationTitle}>Zonas</Text>
           <TouchableOpacity style={styles.Atalho}>
             <Text>Zonas</Text>
-            <Seta width={30} height={30}/>
+            <Seta width={30} height={30} />
           </TouchableOpacity>
         </View>
+
         <View style={styles.ZonesIrrigationQuantity}>
           <View style={styles.ZonesCaracteristics}>
             <Text style={styles.ZonesCaracteristicsTitle}>Zona1</Text>
@@ -94,73 +128,31 @@ const InitialPageScreen = () => {
           <Text style={styles.conecTitle}>Conectividade</Text>
           <TouchableOpacity style={styles.Atalho}>
             <Text style={styles.conectTouchable}>Automatico</Text>
-            <Seta width={30} height={30}/>
+            <Seta width={30} height={30} />
           </TouchableOpacity>
         </View>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}>
-          <Text style={styles.conectAtributes}>Modo de irrigação</Text>
-          <Switch
-            value={switch1}
-            onValueChange={setSwitch1}
-            trackColor={{false: '#767577', true: '#276C32'}}
-            thumbColor={switch1 ? '#fff' : '#f4f3f4'}
-            ios_backgroundColor="#3e3e3e"
-            style={{transform: [{scaleX: 1.0}, {scaleY: 1.0}]}}
-          />
-        </View>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}>
-          <Text style={styles.conectAtributes}>Pausar se chover</Text>
-          <Switch
-            value={switch1}
-            onValueChange={setSwitch1}
-            trackColor={{false: '#767577', true: '#276C32'}}
-            thumbColor={switch1 ? '#fff' : '#f4f3f4'}
-            ios_backgroundColor="#3e3e3e"
-            style={{transform: [{scaleX: 1.0}, {scaleY: 1.0}]}}
-          />
-        </View>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}>
-          <Text style={styles.conectAtributes}>Umidade minima 40%</Text>
-          <Switch
-            value={switch1}
-            onValueChange={setSwitch1}
-            trackColor={{false: '#767577', true: '#276C32'}}
-            thumbColor={switch1 ? '#fff' : '#f4f3f4'}
-            ios_backgroundColor="#3e3e3e"
-            style={{transform: [{scaleX: 1.0}, {scaleY: 1.0}]}}
-          />
-        </View>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}>
-          <Text style={styles.conectAtributes}>Notificações</Text>
-          <Switch
-            value={switch1}
-            onValueChange={setSwitch1}
-            trackColor={{false: '#767577', true: '#276C32'}}
-            thumbColor={switch1 ? '#fff' : '#f4f3f4'}
-            ios_backgroundColor="#3e3e3e"
-            style={{transform: [{scaleX: 1.0}, {scaleY: 1.0}]}}
-          />
-        </View>
+
+        {['Modo de irrigação', 'Pausar se chover', 'Umidade mínima 40%', 'Notificações'].map(
+          (label, index) => (
+            <View
+              key={index}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}>
+              <Text style={styles.conectAtributes}>{label}</Text>
+              <Switch
+                value={switch1}
+                onValueChange={setSwitch1}
+                trackColor={{ false: '#767577', true: '#276C32' }}
+                thumbColor={switch1 ? '#fff' : '#f4f3f4'}
+                ios_backgroundColor="#3e3e3e"
+                style={{ transform: [{ scaleX: 1.0 }, { scaleY: 1.0 }] }}
+              />
+            </View>
+          )
+        )}
       </View>
     </View>
   );
@@ -172,7 +164,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#f0f0f0',
   },
-
   dashboard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -183,20 +174,17 @@ const styles = StyleSheet.create({
     paddingRight: 20,
     marginTop: 20,
   },
-
   dashboardText: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
   },
-
   statusContainer: {
     width: '95%',
     borderRadius: 13,
     display: 'flex',
     backgroundColor: '#F6F6F6',
   },
-
   statusText: {
     paddingTop: 10,
     paddingLeft: 10,
@@ -204,9 +192,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 10,
   },
-
   irrigationInfo: {
-    backgroundColor: '',
     padding: 15,
     marginLeft: 10,
     marginRight: 10,
@@ -215,7 +201,6 @@ const styles = StyleSheet.create({
     display: 'flex',
     flexDirection: 'row',
   },
-
   iconContainer: {
     width: 70,
     height: 70,
@@ -225,28 +210,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 15,
   },
-
   irrigationDetails: {
     marginLeft: 15,
     justifyContent: 'center',
   },
-
   titleIrrigation: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#00796b',
   },
-
   zoneText: {
     fontSize: 16,
     color: '#000000',
   },
-
   lastUpdateText: {
     fontSize: 14,
     color: '#555',
   },
-
   complements: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -254,7 +234,6 @@ const styles = StyleSheet.create({
     paddingLeft: 30,
     paddingRight: 30,
   },
-
   umidade: {
     alignItems: 'center',
     backgroundColor: '#ffffff',
@@ -263,13 +242,12 @@ const styles = StyleSheet.create({
     width: '30%',
     marginRight: 10,
   },
-
   umidadeText: {
     fontSize: 14,
     color: '#000000',
     fontWeight: '500',
+    textAlign: 'center',
   },
-
   previsao: {
     alignItems: 'center',
     backgroundColor: '#ffffff',
@@ -278,19 +256,17 @@ const styles = StyleSheet.create({
     width: '30%',
     marginRight: 10,
   },
-
   previsaoText: {
     fontSize: 14,
     color: '#000000',
     fontWeight: '500',
+    textAlign: 'center',
   },
-
   umidadeValue: {
     fontSize: 14,
     color: '#000000',
     fontWeight: '700',
   },
-
   temperatura: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -299,19 +275,16 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     width: '30%',
   },
-
   temperaturaText: {
     fontSize: 14,
     color: '#000000',
     fontWeight: '500',
   },
-
   temperaturaValue: {
     fontSize: 14,
     color: '#000000',
     fontWeight: '700',
   },
-
   manualIrrigationButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -323,45 +296,34 @@ const styles = StyleSheet.create({
     marginTop: 20,
     gap: 15,
   },
-
   manualIrrigationText: {
     fontSize: 22,
     color: '#ffffff',
     fontWeight: 'bold',
   },
-
   ZonesIrrigationContainer: {
     padding: 15,
     borderRadius: 10,
     marginTop: 10,
     width: '90%',
   },
-
   ZonesHeader: {
     display: 'flex',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-
   ZonesIrrigationTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#000000',
   },
-
-  ZonesIrrigationDescription: {
-    fontSize: 14,
-    color: '#555',
-  },
-
   ZonesIrrigationQuantity: {
     display: 'flex',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-
   ZonesCaracteristics: {
     marginTop: 10,
     padding: 10,
@@ -371,44 +333,39 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
   },
-
   ZonesCaracteristicsTitle: {
     fontSize: 15,
     fontWeight: '500',
   },
-
-  Atalho:{
-    display:'flex',
-    flexDirection:'row',
-    alignItems:'center',
-    justifyContent:'center'
+  Atalho: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-
   conectividade: {
     backgroundColor: '#f8f8f8',
     width: '85%',
     borderRadius: 12,
+    marginTop: 20,
+    padding: 10,
   },
-
   conectHeader: {
     display: 'flex',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-
   conectTouchable: {
     fontSize: 15,
     color: 'gray',
   },
-
   conecTitle: {
     marginTop: 5,
     marginLeft: 5,
     fontWeight: 'bold',
     fontSize: 22,
   },
-
   conectAtributes: {
     fontSize: 16,
     marginTop: 10,
