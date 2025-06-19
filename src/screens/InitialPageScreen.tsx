@@ -5,6 +5,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   Switch,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 
 import WifiIcon from '../../assets/icons/wifi.svg';
@@ -19,18 +21,18 @@ import Seta from '../../assets/icons/keyboard_arrow_right.svg';
 const InitialPageScreen = () => {
   const [switch1, setSwitch1] = useState(false);
 
-  // Estados dinâmicos
   const [soilMoisture, setSoilMoisture] = useState<number | null>(null);
   const [temperature, setTemperature] = useState<number | null>(null);
   const [weather, setWeather] = useState<string>('');
 
-  // Buscar dados do sensor
+  const [bombaLigada, setBombaLigada] = useState<boolean | null>(null);
+  const [loadingBomba, setLoadingBomba] = useState(false);
+
   useEffect(() => {
     const fetchSensorData = async () => {
       try {
-        const response = await fetch('http://192.168.0.100/sensor'); 
+        const response = await fetch('http://192.168.0.100/sensor');
         const data = await response.json();
-
         setSoilMoisture(data.soilMoisture);
         setTemperature(data.temperature);
         setWeather(data.weather);
@@ -39,8 +41,34 @@ const InitialPageScreen = () => {
       }
     };
 
+    const fetchEstadoBomba = async () => {
+      try {
+        const response = await fetch('http://192.168.0.100/bomba');
+        const data = await response.json();
+        setBombaLigada(data.ligada);
+      } catch (error) {
+        console.error('Erro ao buscar estado da bomba:', error);
+      }
+    };
+
     fetchSensorData();
+    fetchEstadoBomba();
   }, []);
+
+  const toggleBomba = async () => {
+    if (bombaLigada === null) return;
+
+    try {
+      setLoadingBomba(true);
+      const url = `http://192.168.0.100/bomba/${bombaLigada ? 'desligar' : 'ligar'}`;
+      await fetch(url, { method: 'POST' });
+      setBombaLigada(!bombaLigada);
+    } catch (error) {
+      Alert.alert('Erro', 'Não foi possível alterar o estado da bomba.');
+    } finally {
+      setLoadingBomba(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -56,7 +84,13 @@ const InitialPageScreen = () => {
             <WaterDrop width={50} height={50} fill="#ffffff" />
           </TouchableOpacity>
           <View style={styles.irrigationDetails}>
-            <Text style={styles.titleIrrigation}>IRRIGAÇÃO LIGADA</Text>
+            <Text style={styles.titleIrrigation}>
+              {bombaLigada === null
+                ? 'Carregando...'
+                : bombaLigada
+                ? 'IRRIGAÇÃO LIGADA'
+                : 'IRRIGAÇÃO DESLIGADA'}
+            </Text>
             <Text style={styles.zoneText}>Zona 1</Text>
             <Text style={styles.lastUpdateText}>
               Última atualização: 10/10/2023 14:30
@@ -77,9 +111,7 @@ const InitialPageScreen = () => {
         <View style={styles.previsao}>
           <Text style={styles.previsaoText}>Previsão</Text>
           <CloudSun width={50} height={50} />
-          <Text style={styles.previsaoText}>
-            {weather || '---'}
-          </Text>
+          <Text style={styles.previsaoText}>{weather || '---'}</Text>
         </View>
 
         <View style={styles.temperatura}>
@@ -91,9 +123,21 @@ const InitialPageScreen = () => {
         </View>
       </View>
 
-      <TouchableOpacity style={styles.manualIrrigationButton}>
-        <Power width={40} height={40} />
-        <Text style={styles.manualIrrigationText}>IRRIGAÇÃO MANUAL</Text>
+      <TouchableOpacity
+        style={styles.manualIrrigationButton}
+        onPress={toggleBomba}
+        disabled={loadingBomba}
+      >
+        {loadingBomba ? (
+          <ActivityIndicator size="small" color="#fff" />
+        ) : (
+          <>
+            <Power width={40} height={40} />
+            <Text style={styles.manualIrrigationText}>
+              {bombaLigada ? 'IRRIGAÇÃO DESLIGADA' : 'IRRIGAÇÃO LIGADA'}
+            </Text>
+          </>
+        )}
       </TouchableOpacity>
 
       <View style={styles.ZonesIrrigationContainer}>
@@ -106,20 +150,12 @@ const InitialPageScreen = () => {
         </View>
 
         <View style={styles.ZonesIrrigationQuantity}>
-          <View style={styles.ZonesCaracteristics}>
-            <Text style={styles.ZonesCaracteristicsTitle}>Zona1</Text>
-            <Water width={35} height={35} />
-          </View>
-
-          <View style={styles.ZonesCaracteristics}>
-            <Text style={styles.ZonesCaracteristicsTitle}>Zona2</Text>
-            <Water width={35} height={35} />
-          </View>
-
-          <View style={styles.ZonesCaracteristics}>
-            <Text style={styles.ZonesCaracteristicsTitle}>Zona3</Text>
-            <Water width={35} height={35} />
-          </View>
+          {['Zona1', 'Zona2', 'Zona3'].map((zona, i) => (
+            <View key={i} style={styles.ZonesCaracteristics}>
+              <Text style={styles.ZonesCaracteristicsTitle}>{zona}</Text>
+              <Water width={35} height={35} />
+            </View>
+          ))}
         </View>
       </View>
 
@@ -148,7 +184,6 @@ const InitialPageScreen = () => {
                 trackColor={{ false: '#767577', true: '#276C32' }}
                 thumbColor={switch1 ? '#fff' : '#f4f3f4'}
                 ios_backgroundColor="#3e3e3e"
-                style={{ transform: [{ scaleX: 1.0 }, { scaleY: 1.0 }] }}
               />
             </View>
           )
