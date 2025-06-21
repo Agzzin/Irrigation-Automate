@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,8 @@ import CloudSun from '../../assets/icons/cloud-sun.svg';
 import Thermometer from '../../assets/icons/thermometer-half.svg';
 import Power from '../../assets/icons/power.svg';
 import Water from '../../assets/icons/water.svg';
-import Seta from '../../assets/icons/keyboard_arrow_right.svg';
+
+const MIN_UMIDADE = 40;
 
 const InitialPageScreen = () => {
   const [switchIrrigationMode, setSwitchIrrigationMode] = useState(false);
@@ -27,8 +28,8 @@ const InitialPageScreen = () => {
   const [switchMinHumidity, setSwitchMinHumidity] = useState(false);
   const [switchNotifications, setSwitchNotifications] = useState(false);
 
-  const [soilMoisture, setSoilMoisture] = useState(null);
-  const [temperature, setTemperature] = useState(null);
+  const [soilMoisture, setSoilMoisture] = useState<number | null>(null);
+  const [temperature, setTemperature] = useState<number | null>(null);
   const [weather, setWeather] = useState('');
   const [lastUpdate, setLastUpdate] = useState('');
 
@@ -39,22 +40,34 @@ const InitialPageScreen = () => {
   const [isOnline, setIsOnline] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  const [zonasStatus, setZonasStatus] = useState([
+    {nome: 'Zona 1', ligada: bombaLigada ?? false},
+    {nome: 'Zona 2', ligada: false},
+    {nome: 'Zona 3', ligada: false},
+  ]);
+
+  // Carregar configurações do AsyncStorage
   useEffect(() => {
     const carregarConfiguracoes = async () => {
-      const modoAuto = await AsyncStorage.getItem('modoAuto');
-      const chuva = await AsyncStorage.getItem('pausarChuva');
-      const umidade = await AsyncStorage.getItem('umidadeMin');
-      const notificacoes = await AsyncStorage.getItem('notificacoes');
+      try {
+        const modoAuto = await AsyncStorage.getItem('modoAuto');
+        const chuva = await AsyncStorage.getItem('pausarChuva');
+        const umidade = await AsyncStorage.getItem('umidadeMin');
+        const notificacoes = await AsyncStorage.getItem('notificacoes');
 
-      setSwitchIrrigationMode(modoAuto === 'true');
-      setSwitchPauseRain(chuva === 'true');
-      setSwitchMinHumidity(umidade === 'true');
-      setSwitchNotifications(notificacoes === 'true');
+        setSwitchIrrigationMode(modoAuto === 'true');
+        setSwitchPauseRain(chuva === 'true');
+        setSwitchMinHumidity(umidade === 'true');
+        setSwitchNotifications(notificacoes === 'true');
+      } catch (e) {
+        console.warn('Erro ao carregar configurações:', e);
+      }
     };
 
     carregarConfiguracoes();
   }, []);
 
+  // Salvar configurações no AsyncStorage
   useEffect(() => {
     AsyncStorage.setItem('modoAuto', switchIrrigationMode.toString());
   }, [switchIrrigationMode]);
@@ -71,12 +84,26 @@ const InitialPageScreen = () => {
     AsyncStorage.setItem('notificacoes', switchNotifications.toString());
   }, [switchNotifications]);
 
-  const fetchSensorData = async () => {
+  // Fetch dados sensores
+  const fetchSensorData = useCallback(async () => {
     try {
       setLoadingSensores(true);
       setSensorError(null);
+
       const response = await fetch('http://192.168.0.100/sensor');
+      if (!response.ok) throw new Error('Resposta do sensor inválida');
+
       const data = await response.json();
+
+      // Validações básicas
+      if (
+        typeof data.soilMoisture !== 'number' ||
+        typeof data.temperature !== 'number' ||
+        typeof data.weather !== 'string'
+      ) {
+        throw new Error('Dados do sensor inválidos');
+      }
+
       setSoilMoisture(data.soilMoisture);
       setTemperature(data.temperature);
       setWeather(data.weather);
@@ -87,103 +114,191 @@ const InitialPageScreen = () => {
           day: '2-digit',
           month: '2-digit',
           year: 'numeric',
-        })
+        }),
       );
     } catch (error) {
       setSensorError('Erro ao buscar dados dos sensores');
+      setSoilMoisture(null);
+      setTemperature(null);
+      setWeather('');
     } finally {
       setLoadingSensores(false);
       setRefreshing(false);
     }
-  };
+  }, []);
 
-  const fetchEstadoBomba = async () => {
+  // Fetch estado da bomba
+  const fetchEstadoBomba = useCallback(async () => {
     try {
       const response = await fetch('http://192.168.0.100/bomba');
-      const data = await response.json();
-      setBombaLigada(data.ligada);
-    } catch (error) {}
-  };
+      if (!response.ok) throw new Error('Resposta da bomba inválida');
 
-  const checkConexao = async () => {
+      const data = await response.json();
+
+      if (typeof data.ligada !== 'boolean') throw new Error('Dados da bomba inválidos');
+
+      setBombaLigada(data.ligada);
+
+      // Atualiza Zona 1
+      setZonasStatus(prev => {
+        const updated = [...prev];
+        updated[0].ligada = data.ligada;
+        return updated;
+      });
+    } catch (error) {
+      Alert.alert('Erro', 'Não foi possível obter o estado da bomba.');
+      setBombaLigada(null);
+    }
+  }, []);
+
+  // Check conexão
+  const checkConexao = useCallback(async () => {
     try {
       const response = await fetch('http://192.168.0.100/ping');
       setIsOnline(response.ok);
     } catch (error) {
       setIsOnline(false);
     }
-  };
+  }, []);
 
+  // Atualização periódica
   useEffect(() => {
     fetchSensorData();
     fetchEstadoBomba();
     checkConexao();
     const interval = setInterval(() => {
       fetchSensorData();
+      fetchEstadoBomba();
       checkConexao();
     }, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchSensorData, fetchEstadoBomba, checkConexao]);
 
+  // Automação da irrigação
   useEffect(() => {
-    if (
-      switchIrrigationMode &&
-      soilMoisture !== null &&
-      soilMoisture < 40 &&
-      bombaLigada === false
-    ) {
-      toggleBomba();
-    }
-  }, [soilMoisture, switchIrrigationMode]);
+    const automatizarIrrigacao = async () => {
+      if (!switchIrrigationMode) return; // modo manual
 
-  useEffect(() => {
-    if (
-      switchPauseRain &&
-      weather.toLowerCase().includes('chuva') &&
-      bombaLigada === true
-    ) {
-      toggleBomba();
-    }
-  }, [weather, switchPauseRain]);
+      // Espera dados prontos
+      if (
+        soilMoisture === null ||
+        weather === '' ||
+        bombaLigada === null ||
+        loadingBomba
+      )
+        return;
 
-  useEffect(() => {
-    if (switchNotifications && bombaLigada !== null) {
-      Alert.alert(
-        'Status da Bomba',
-        bombaLigada ? 'A bomba foi ligada.' : 'A bomba foi desligada.'
-      );
-    }
-  }, [bombaLigada]);
+      // Verifica se está online para enviar comando
+      if (!isOnline) return;
 
-  const toggleBomba = async () => {
-    if (bombaLigada === null) return;
-    try {
-      setLoadingBomba(true);
-      const url = `http://192.168.0.100/bomba/${bombaLigada ? 'desligar' : 'ligar'}`;
-      await fetch(url, { method: 'POST' });
-      setBombaLigada(!bombaLigada);
-    } catch (error) {
-      Alert.alert('Erro', 'Não foi possível alterar o estado da bomba.');
-    } finally {
-      setLoadingBomba(false);
-    }
-  };
+      // Pausar se chover
+      if (
+        switchPauseRain &&
+        weather.toLowerCase().includes('chuva') &&
+        bombaLigada
+      ) {
+        await toggleBomba(false); // Desliga a bomba
+        if (switchNotifications)
+          Alert.alert('Automação', 'Irrigação pausada por causa da chuva.');
+        return;
+      }
 
+      // Umidade mínima
+      if (
+        switchMinHumidity &&
+        soilMoisture >= MIN_UMIDADE &&
+        bombaLigada
+      ) {
+        await toggleBomba(false); // Desliga a bomba
+        if (switchNotifications)
+          Alert.alert('Automação', 'Irrigação desligada - umidade suficiente.');
+        return;
+      }
+
+      // Liga bomba se umidade abaixo do mínimo e bomba desligada
+      if (
+        soilMoisture < MIN_UMIDADE &&
+        !bombaLigada
+      ) {
+        await toggleBomba(true);
+        if (switchNotifications)
+          Alert.alert('Automação', 'Irrigação ligada - umidade baixa.');
+        return;
+      }
+    };
+
+    automatizarIrrigacao();
+  }, [
+    switchIrrigationMode,
+    switchPauseRain,
+    switchMinHumidity,
+    soilMoisture,
+    weather,
+    bombaLigada,
+    isOnline,
+    loadingBomba,
+    switchNotifications,
+  ]);
+
+  // Função para ligar/desligar bomba (param opcional para força estado)
+  const toggleBomba = useCallback(
+    async (forcarEstado?: boolean) => {
+      if (bombaLigada === null && forcarEstado === undefined) return;
+
+      // Define novo estado
+      const novoEstado = forcarEstado ?? !bombaLigada;
+
+      if (!isOnline) {
+        Alert.alert('Erro', 'Dispositivo offline. Não é possível alterar a bomba.');
+        return;
+      }
+
+      try {
+        setLoadingBomba(true);
+        const url = `http://192.168.0.100/bomba/${
+          novoEstado ? 'ligar' : 'desligar'
+        }`;
+
+        const response = await fetch(url, {method: 'POST'});
+
+        if (!response.ok) throw new Error('Falha na requisição');
+
+        // Reconsulta o estado para garantir sincronização
+        await fetchEstadoBomba();
+
+        // Atualiza zonas (simples, só Zona 1 pela API)
+        setZonasStatus(prev => {
+          const updated = [...prev];
+          updated[0].ligada = novoEstado;
+          return updated;
+        });
+      } catch (error) {
+        Alert.alert('Erro', 'Não foi possível alterar o estado da bomba.');
+      } finally {
+        setLoadingBomba(false);
+      }
+    },
+    [bombaLigada, fetchEstadoBomba, isOnline],
+  );
+
+  // Pull to refresh
   const onRefresh = () => {
     setRefreshing(true);
     fetchSensorData();
     fetchEstadoBomba();
+    checkConexao();
   };
 
   return (
     <ScrollView
-      style={{ flex: 1 }}
+      style={{flex: 1}}
       contentContainerStyle={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-    >
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }>
       <View style={styles.dashboard}>
         <Text style={styles.dashboardText}>DASHBOARD</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={{flexDirection: 'row', alignItems: 'center'}}>
           <WifiIcon width={24} height={24} />
           <View
             style={{
@@ -197,15 +312,25 @@ const InitialPageScreen = () => {
         </View>
       </View>
 
-      <Text style={{ fontSize: 12, color: 'gray', marginBottom: 5 }}>
+      <Text style={{fontSize: 12, color: 'gray', marginBottom: 5}}>
         Conexão: {isOnline ? 'Conectado' : 'Desconectado'}
       </Text>
 
       <View style={styles.statusContainer}>
         <Text style={styles.statusText}>Status Atual</Text>
         <View style={styles.irrigationInfo}>
-          <TouchableOpacity style={styles.iconContainer}>
-            <WaterDrop width={50} height={50} fill="#ffffff" />
+          <TouchableOpacity
+            style={[
+              styles.iconContainer,
+              !isOnline && {backgroundColor: '#999'}, // cinza se offline
+            ]}
+            onPress={() => toggleBomba()}
+            disabled={loadingBomba || bombaLigada === null || !isOnline}>
+            {loadingBomba ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <WaterDrop width={40} height={40} />
+            )}
           </TouchableOpacity>
           <View style={styles.irrigationDetails}>
             <Text style={styles.titleIrrigation}>
@@ -223,14 +348,130 @@ const InitialPageScreen = () => {
         </View>
       </View>
 
+      {/* Mensagem de erro sensores */}
+      {sensorError && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{sensorError}</Text>
+        </View>
+      )}
+
+      <View style={styles.cardRow}>
+        <View style={styles.card}>
+          <SoilMoisture width={30} height={30} />
+          <Text style={styles.cardLabel}>Umidade</Text>
+          <Text style={styles.cardValue}>
+            {soilMoisture !== null ? soilMoisture + '%' : '--'}
+          </Text>
+        </View>
+        <View style={styles.card}>
+          <Thermometer width={30} height={30} />
+          <Text style={styles.cardLabel}>Temperatura</Text>
+          <Text style={styles.cardValue}>
+            {temperature !== null ? temperature + ' °C' : '--'}
+          </Text>
+        </View>
+        <View style={styles.card}>
+          <CloudSun width={30} height={30} />
+          <Text style={styles.cardLabel}>Clima</Text>
+          <Text style={styles.cardValue}>{weather || '--'}</Text>
+        </View>
+      </View>
+
+      <View style={styles.manualContainer}>
+        <TouchableOpacity
+          style={[
+            styles.manualButton,
+            (!isOnline || loadingBomba || bombaLigada === null) && {
+              backgroundColor: '#999',
+            },
+          ]}
+          onPress={() => toggleBomba()}
+          disabled={loadingBomba || bombaLigada === null || !isOnline}>
+          {loadingBomba ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <Power width={30} height={30} color="#fff" />
+              <Text style={styles.manualText}>
+                {bombaLigada ? 'DESLIGAR IRRIGAÇÃO' : 'LIGAR IRRIGAÇÃO'}
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.zonasContainer}>
+        {zonasStatus.map((zona, index) => (
+          <View key={index} style={styles.zonaCard}>
+            <Text style={styles.zonaNome}>{zona.nome}</Text>
+            <Water width={30} height={30} color="#296C32" />
+            <Text
+              style={[
+                styles.statusTextZona,
+                {color: zona.ligada ? '#296C32' : '#cc4444'},
+              ]}>
+              {zona.ligada ? 'Ligada' : 'Desligada'}
+            </Text>
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.cardContainer}>
+        <Text style={styles.cardTitle}>Conectividade & Configurações</Text>
+
+        <View style={styles.configRow}>
+          <Text style={styles.configLabel}>Modo de Irrigação</Text>
+          <Switch
+            value={switchIrrigationMode}
+            onValueChange={setSwitchIrrigationMode}
+            thumbColor={switchIrrigationMode ? '#296C32' : '#ccc'}
+            trackColor={{false: '#ddd', true: '#a4d7a7'}}
+          />
+        </View>
+
+        <View style={styles.configRow}>
+          <Text style={styles.configLabel}>Pausar se chover</Text>
+          <Switch
+            value={switchPauseRain}
+            onValueChange={setSwitchPauseRain}
+            thumbColor={switchPauseRain ? '#296C32' : '#ccc'}
+            trackColor={{false: '#ddd', true: '#a4d7a7'}}
+            disabled={!switchIrrigationMode}
+          />
+        </View>
+
+        <View style={styles.configRow}>
+          <Text style={styles.configLabel}>Umidade mínima (40%)</Text>
+          <Switch
+            value={switchMinHumidity}
+            onValueChange={setSwitchMinHumidity}
+            thumbColor={switchMinHumidity ? '#296C32' : '#ccc'}
+            trackColor={{false: '#ddd', true: '#a4d7a7'}}
+            disabled={!switchIrrigationMode}
+          />
+        </View>
+
+        <View style={styles.configRow}>
+          <Text style={styles.configLabel}>Notificações</Text>
+          <Switch
+            value={switchNotifications}
+            onValueChange={setSwitchNotifications}
+            thumbColor={switchNotifications ? '#296C32' : '#ccc'}
+            trackColor={{false: '#ddd', true: '#a4d7a7'}}
+          />
+        </View>
+      </View>
     </ScrollView>
   );
 };
-const styles = StyleSheet.create({ 
+
+
+
+const styles = StyleSheet.create({
   container: {
-    flex: 1,
     alignItems: 'center',
     backgroundColor: '#f0f0f0',
+    paddingBottom: 30,
   },
   dashboard: {
     flexDirection: 'row',
@@ -238,8 +479,7 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingTop: 40,
     paddingBottom: 10,
-    paddingLeft: 20,
-    paddingRight: 20,
+    paddingHorizontal: 20,
     marginTop: 20,
   },
   dashboardText: {
@@ -250,8 +490,11 @@ const styles = StyleSheet.create({
   statusContainer: {
     width: '95%',
     borderRadius: 13,
-    display: 'flex',
     backgroundColor: '#F6F6F6',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
   },
   statusText: {
     paddingTop: 10,
@@ -262,11 +505,9 @@ const styles = StyleSheet.create({
   },
   irrigationInfo: {
     padding: 15,
-    marginLeft: 10,
-    marginRight: 10,
+    marginHorizontal: 10,
     borderRadius: 10,
     marginBottom: 20,
-    display: 'flex',
     flexDirection: 'row',
   },
   iconContainer: {
@@ -279,7 +520,6 @@ const styles = StyleSheet.create({
     marginRight: 15,
   },
   irrigationDetails: {
-    marginLeft: 15,
     justifyContent: 'center',
   },
   titleIrrigation: {
@@ -295,150 +535,138 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#555',
   },
-  complements: {
+  cardRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    width: '95%',
-    paddingLeft: 30,
-    paddingRight: 30,
+    width: '90%',
+    marginTop: 10,
   },
-  umidade: {
-    alignItems: 'center',
+  card: {
     backgroundColor: '#ffffff',
-    padding: 15,
     borderRadius: 10,
-    width: '30%',
-    marginRight: 10,
-  },
-  umidadeText: {
-    fontSize: 14,
-    color: '#000000',
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  previsao: {
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
     padding: 15,
-    borderRadius: 10,
-    width: '30%',
-    marginRight: 10,
-  },
-  previsaoText: {
-    fontSize: 14,
-    color: '#000000',
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  umidadeValue: {
-    fontSize: 14,
-    color: '#000000',
-    fontWeight: '700',
-  },
-  temperatura: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#ffffff',
-    padding: 9,
-    borderRadius: 10,
     width: '30%',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  temperaturaText: {
+  cardLabel: {
     fontSize: 14,
     color: '#000000',
     fontWeight: '500',
+    marginTop: 5,
   },
-  temperaturaValue: {
-    fontSize: 14,
-    color: '#000000',
+  cardValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 5,
+  },
+  zonasContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '90%',
+    marginTop: 20,
+  },
+  zonaCard: {
+    backgroundColor: '#fff',
+    width: '30%',
+    borderRadius: 10,
+    padding: 15,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  zonaNome: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 10,
+  },
+  statusIndicator: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    marginBottom: 8,
+  },
+  statusTextZona: {
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  cardContainer: {
+    width: '95%',
+    backgroundColor: '#fff',
+    borderRadius: 13,
+    padding: 15,
+    marginTop: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  cardTitle: {
+    fontSize: 18,
     fontWeight: '700',
+    marginBottom: 15,
   },
-  manualIrrigationButton: {
+  configRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  configLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  manualContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+    width: '100%',
+    marginTop: 20,
+  },
+  manualButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#296C32',
-    padding: 15,
-    paddingRight: 30,
-    paddingLeft: 30,
+    paddingVertical: 20,
+    paddingHorizontal: 75,
     borderRadius: 10,
-    marginTop: 20,
-    gap: 15,
+    gap: 10,
   },
-  manualIrrigationText: {
+  manualText: {
+    color: '#fff',
     fontSize: 22,
-    color: '#ffffff',
     fontWeight: 'bold',
   },
-  ZonesIrrigationContainer: {
-    padding: 15,
-    borderRadius: 10,
-    marginTop: 10,
-    width: '90%',
-  },
-  ZonesHeader: {
-    display: 'flex',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  ZonesIrrigationTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#000000',
-  },
-  ZonesIrrigationQuantity: {
-    display: 'flex',
+  zonaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
   },
-  ZonesCaracteristics: {
-    marginTop: 10,
-    padding: 10,
-    paddingLeft: 20,
-    paddingRight: 20,
-    backgroundColor: '#F8F8F8',
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  ZonesCaracteristicsTitle: {
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  Atalho: {
-    display: 'flex',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  conectividade: {
-    backgroundColor: '#f8f8f8',
-    width: '85%',
-    borderRadius: 12,
-    marginTop: 20,
-    padding: 10,
-  },
-  conectHeader: {
-    display: 'flex',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  conectTouchable: {
-    fontSize: 15,
-    color: 'gray',
-  },
-  conecTitle: {
-    marginTop: 5,
-    marginLeft: 5,
-    fontWeight: 'bold',
-    fontSize: 22,
-  },
-  conectAtributes: {
-    fontSize: 16,
-    marginTop: 10,
-    marginLeft: 5,
-  },
+  errorContainer: {
+  backgroundColor: '#f8d7da',
+  borderRadius: 10,
+  padding: 12,
+  marginVertical: 10,
+  width: '90%',
+  alignItems: 'center',
+  shadowColor: '#721c24',
+  shadowOpacity: 0.4,
+  shadowRadius: 4,
+  shadowOffset: { width: 0, height: 2 },
+  elevation: 3,
+},
+
+errorText: {
+  color: '#721c24',
+  fontWeight: '600',
+  fontSize: 14,
+  textAlign: 'center',
+},
 });
 
 export default InitialPageScreen;

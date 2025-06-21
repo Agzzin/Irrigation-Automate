@@ -12,6 +12,7 @@ import {
 import Water from '../../assets/icons/droplet.svg';
 import AddCircle from '../../assets/icons/add-circle.svg';
 import CheckBox from '@react-native-community/checkbox';
+import Icon from 'react-native-vector-icons/MaterialIcons'; 
 
 type Programacao = {
   nome: string;
@@ -135,7 +136,7 @@ const ProgrammingScreen = () => {
               <TouchableOpacity
                 style={styles.botaoExcluir}
                 onPress={() => handleDelete(index)}>
-                <Text style={styles.textoExcluir}>Excluir</Text>
+                <Icon name="delete" size={20} color="#fff" />
               </TouchableOpacity>
             </View>
           </View>
@@ -397,11 +398,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 10,
     borderRadius: 6,
-  },
-  textoExcluir: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
   },
 });
 
