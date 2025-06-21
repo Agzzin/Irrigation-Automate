@@ -38,6 +38,7 @@ const ProgrammingScreen = () => {
   const [programacoesAtivas, setProgramacoesAtivas] = useState<Programacao[]>(
     [],
   );
+  const [formVisible, setFormVisible] = useState(false);
 
   const toggleDay = (day: string) => {
     setSelectedDays(prev =>
@@ -82,6 +83,24 @@ const ProgrammingScreen = () => {
     setStartTime('');
     setDuration('');
     setPauseOnRain(false);
+    setFormVisible(false);
+  };
+
+  const handleDelete = (index: number) => {
+    Alert.alert(
+      'Confirmar exclusão',
+      'Tem certeza que deseja excluir esta programação?',
+      [
+        {text: 'Cancelar', style: 'cancel'},
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: () => {
+            setProgramacoesAtivas(prev => prev.filter((_, i) => i !== index));
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -113,107 +132,116 @@ const ProgrammingScreen = () => {
                   />
                 </View>
               </View>
+              <TouchableOpacity
+                style={styles.botaoExcluir}
+                onPress={() => handleDelete(index)}>
+                <Text style={styles.textoExcluir}>Excluir</Text>
+              </TouchableOpacity>
             </View>
           </View>
         ))}
-        <TouchableOpacity style={styles.botaoNovaProg}>
+        <TouchableOpacity
+          style={styles.botaoNovaProg}
+          onPress={() => setFormVisible(true)}>
           <AddCircle width={25} height={25} />
           <Text style={styles.textoNovaProg}>Nova Programação</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.formContainer}>
-        <Text style={styles.formTitulo}>Nova Programação</Text>
+      {formVisible && (
+        <View style={styles.formContainer}>
+          <Text style={styles.formTitulo}>Nova Programação</Text>
 
-        <View style={styles.formBox}>
-          <Text style={styles.label}>Nome</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Nome da programação"
-            value={nomeProg}
-            onChangeText={setNomeProg}
-            placeholderTextColor="#888"
-          />
+          <View style={styles.formBox}>
+            <Text style={styles.label}>Nome</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Nome da programação"
+              value={nomeProg}
+              onChangeText={setNomeProg}
+              placeholderTextColor="#888"
+            />
 
-          <Text style={styles.label}>Zonas</Text>
-          <View style={styles.checkboxContainer}>
-            {Object.keys(selectedZones).map((zona, index) => (
-              <View key={index} style={styles.checkboxItem}>
-                <CheckBox
-                  value={selectedZones[zona as keyof typeof selectedZones]}
-                  onValueChange={val =>
-                    setSelectedZones(prev => ({...prev, [zona]: val}))
-                  }
-                  tintColors={{true: '#00f', false: '#aaa'}}
-                />
-                <Text style={styles.checkboxLabel}>{zona}</Text>
-              </View>
-            ))}
-          </View>
+            <Text style={styles.label}>Zonas</Text>
+            <View style={styles.checkboxContainer}>
+              {Object.keys(selectedZones).map((zona, index) => (
+                <View key={index} style={styles.checkboxItem}>
+                  <CheckBox
+                    value={selectedZones[zona as keyof typeof selectedZones]}
+                    onValueChange={val =>
+                      setSelectedZones(prev => ({...prev, [zona]: val}))
+                    }
+                    tintColors={{true: '#00f', false: '#aaa'}}
+                  />
+                  <Text style={styles.checkboxLabel}>{zona}</Text>
+                </View>
+              ))}
+            </View>
 
-          <Text style={styles.label}>Dias da semana</Text>
-          <View style={styles.diasContainer}>
-            {diasDaSemana.map((dia, index) => (
+            <Text style={styles.label}>Dias da semana</Text>
+            <View style={styles.diasContainer}>
+              {diasDaSemana.map((dia, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.diaBotao,
+                    selectedDays.includes(dia) && styles.diaSelecionado,
+                  ]}
+                  onPress={() => toggleDay(dia)}>
+                  <Text style={styles.diaTexto}>{dia}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.horariosRow}>
+              <Text style={styles.label}>Horário de Início</Text>
+              <Text style={styles.label}>Duração</Text>
+            </View>
+
+            <View style={styles.horariosRow}>
+              <TextInput
+                style={styles.inputMenor}
+                placeholder="Ex: 06:00"
+                value={startTime}
+                onChangeText={setStartTime}
+                placeholderTextColor="#888"
+              />
+              <TextInput
+                style={styles.inputMenor}
+                placeholder="Ex: 15 min"
+                value={duration}
+                onChangeText={setDuration}
+                placeholderTextColor="#888"
+              />
+            </View>
+
+            <View style={styles.switchRow}>
+              <Text style={styles.switchLabel}>
+                Pausar se tiver previsão de chuva
+              </Text>
+              <Switch
+                value={pauseOnRain}
+                onValueChange={setPauseOnRain}
+                trackColor={{false: '#767577', true: '#276C32'}}
+                thumbColor={pauseOnRain ? '#fff' : '#f4f3f4'}
+                ios_backgroundColor="#3e3e3e"
+                style={styles.switch}
+              />
+            </View>
+
+            <View style={styles.botoesRow}>
               <TouchableOpacity
-                key={index}
-                style={[
-                  styles.diaBotao,
-                  selectedDays.includes(dia) && styles.diaSelecionado,
-                ]}
-                onPress={() => toggleDay(dia)}>
-                <Text style={styles.diaTexto}>{dia}</Text>
+                style={styles.botaoCancelar}
+                onPress={handleCancel}>
+                <Text style={styles.textoCancelar}>Cancelar</Text>
               </TouchableOpacity>
-            ))}
-          </View>
-
-          <View style={styles.horariosRow}>
-            <Text style={styles.label}>Horário de Início</Text>
-            <Text style={styles.label}>Duração</Text>
-          </View>
-
-          <View style={styles.horariosRow}>
-            <TextInput
-              style={styles.inputMenor}
-              placeholder="Ex: 06:00"
-              value={startTime}
-              onChangeText={setStartTime}
-              placeholderTextColor="#888"
-            />
-            <TextInput
-              style={styles.inputMenor}
-              placeholder="Ex: 15 min"
-              value={duration}
-              onChangeText={setDuration}
-              placeholderTextColor="#888"
-            />
-          </View>
-
-          <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>
-              Pausar se tiver previsão de chuva
-            </Text>
-            <Switch
-              value={pauseOnRain}
-              onValueChange={setPauseOnRain}
-              trackColor={{false: '#767577', true: '#276C32'}}
-              thumbColor={pauseOnRain ? '#fff' : '#f4f3f4'}
-              ios_backgroundColor="#3e3e3e"
-              style={styles.switch}
-            />
-          </View>
-
-          <View style={styles.botoesRow}>
-            <TouchableOpacity
-              style={styles.botaoCancelar}
-              onPress={handleCancel}>
-              <Text style={styles.textoCancelar}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.botaoSalvar} onPress={handleSave}>
-              <Text style={styles.textoSalvar}>Salvar</Text>
-            </TouchableOpacity>
+              <TouchableOpacity style={styles.botaoSalvar} onPress={handleSave}>
+                <Text style={styles.textoSalvar}>Salvar</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
-      </View>
+      )}
     </ScrollView>
   );
 };
@@ -229,7 +257,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.2,
     borderColor: 'gray',
   },
-  headerText: {fontSize: 20, fontWeight: 'bold'},
+  headerText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
 
   containerAtivas: {padding: 20},
   ativasText: {fontSize: 18, fontWeight: '700', paddingBottom: 10},
@@ -359,6 +390,19 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   textoSalvar: {fontWeight: 'bold', fontSize: 17, color: '#ffffff'},
+  botaoExcluir: {
+    marginTop: 8,
+    alignSelf: 'flex-end',
+    backgroundColor: '#c62828',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+  },
+  textoExcluir: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
 });
 
 export default ProgrammingScreen;
