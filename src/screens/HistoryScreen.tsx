@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useCallback} from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,11 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {BarChart, LineChart, PieChart} from 'react-native-chart-kit';
 
+const STATUS_OPTIONS = ['concluído', 'ignorado', 'automático', '70% umidade'];
+const PERIOD_OPTIONS = ['7', '30'] as const;
+
+type Period = (typeof PERIOD_OPTIONS)[number];
+
 type HistoryItem = {
   id: string;
   date: string;
@@ -24,10 +29,84 @@ type HistoryItem = {
   favorite?: boolean;
 };
 
-const STATUS_OPTIONS = ['concluído', 'ignorado', 'automático', '70% umidade'];
+const dummyHistory: HistoryItem[] = [
+  {
+    id: '1',
+    date: '2025-06-20T07:00:00',
+    status: 'Concluído',
+    zone: 'Zona 1',
+    duration: '00:15:00',
+    favorite: false,
+  },
+  {
+    id: '2',
+    date: '2025-06-19T18:00:00',
+    status: 'Ignorado',
+    zone: 'Zona 2',
+    duration: '00:00:00',
+    favorite: false,
+  },
+  {
+    id: '3',
+    date: '2025-06-21T09:00:00',
+    status: 'Automático',
+    zone: 'Zona 3',
+    duration: '00:10:00',
+    favorite: false,
+  },
+  {
+    id: '4',
+    date: '2025-06-21T10:00:00',
+    status: 'Concluído',
+    zone: 'Zona 1',
+    duration: '00:12:00',
+    favorite: true,
+  },
+  {
+    id: '5',
+    date: '2025-06-18T11:00:00',
+    status: '70% umidade',
+    zone: 'Zona 2',
+    duration: '00:05:00',
+    favorite: false,
+  },
+];
+
+const FilterGroup = ({
+  options,
+  selected,
+  blacklist,
+  onToggleSelected,
+  onToggleBlacklist,
+}: {
+  options: string[];
+  selected: string[];
+  blacklist: string[];
+  onToggleSelected: (item: string) => void;
+  onToggleBlacklist: (item: string) => void;
+}) => (
+  <ScrollView
+    horizontal
+    showsHorizontalScrollIndicator={false}
+    style={styles.checkboxRow}>
+    {options.map(status => {
+      const isChecked = selected.includes(status);
+      const isBlacklisted = blacklist.includes(status);
+      return (
+        <View key={status} style={styles.checkboxWrapper}>
+          <TouchableOpacity
+            style={[styles.checkbox, isChecked && styles.checkboxChecked]}
+            onPress={() => onToggleSelected(status)}>
+            <Text>{status}</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    })}
+  </ScrollView>
+);
 
 const HistoryScreen = () => {
-  const [selectedPeriod, setSelectedPeriod] = useState<'7' | '30'>('7');
+  const [selectedPeriod, setSelectedPeriod] = useState<Period>('7');
   const [statusFilters, setStatusFilters] = useState<string[]>([]);
   const [blacklistFilters, setBlacklistFilters] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -37,48 +116,7 @@ const HistoryScreen = () => {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [nextEventCountdown, setNextEventCountdown] = useState<string>('');
 
-  const dummyHistory: HistoryItem[] = [
-    {
-      id: '1',
-      date: '2025-06-20T07:00:00',
-      status: 'concluído',
-      zone: 'Zona 1',
-      duration: '00:15:00',
-      favorite: false,
-    },
-    {
-      id: '2',
-      date: '2025-06-19T18:00:00',
-      status: 'ignorado',
-      zone: 'Zona 2',
-      duration: '00:00:00',
-      favorite: false,
-    },
-    {
-      id: '3',
-      date: '2025-06-21T09:00:00',
-      status: 'automático',
-      zone: 'Zona 3',
-      duration: '00:10:00',
-      favorite: false,
-    },
-    {
-      id: '4',
-      date: '2025-06-21T10:00:00',
-      status: 'concluído',
-      zone: 'Zona 1',
-      duration: '00:12:00',
-      favorite: true,
-    },
-    {
-      id: '5',
-      date: '2025-06-18T11:00:00',
-      status: '70% umidade',
-      zone: 'Zona 2',
-      duration: '00:05:00',
-      favorite: false,
-    },
-  ];
+  const screenWidth = Dimensions.get('window').width - 32;
 
   useEffect(() => {
     const loadData = async () => {
@@ -105,7 +143,6 @@ const HistoryScreen = () => {
         setLoading(false);
       }
     };
-
     loadData();
   }, []);
 
@@ -114,23 +151,17 @@ const HistoryScreen = () => {
     await AsyncStorage.setItem('historyItems', JSON.stringify(newHistory));
   };
 
-  const toggleStatus = async (status: string) => {
-    const newFilters = statusFilters.includes(status)
-      ? statusFilters.filter(s => s !== status)
-      : [...statusFilters, status];
-    setStatusFilters(newFilters);
-    await AsyncStorage.setItem('statusFilters', JSON.stringify(newFilters));
-  };
-
-  const toggleBlacklist = async (status: string) => {
-    const newBlacklist = blacklistFilters.includes(status)
-      ? blacklistFilters.filter(s => s !== status)
-      : [...blacklistFilters, status];
-    setBlacklistFilters(newBlacklist);
-    await AsyncStorage.setItem(
-      'blacklistFilters',
-      JSON.stringify(newBlacklist),
-    );
+  const toggleSetItem = async (
+    item: string,
+    set: string[],
+    setter: (s: string[]) => void,
+    key: string,
+  ) => {
+    const newSet = set.includes(item)
+      ? set.filter(s => s !== item)
+      : [...set, item];
+    setter(newSet);
+    await AsyncStorage.setItem(key, JSON.stringify(newSet));
   };
 
   const toggleFavorite = async (id: string) => {
@@ -142,49 +173,16 @@ const HistoryScreen = () => {
 
   const toggleSelectItem = (id: string) => {
     const newSelected = new Set(selectedItems);
-    if (newSelected.has(id)) newSelected.delete(id);
-    else newSelected.add(id);
+    newSelected.has(id) ? newSelected.delete(id) : newSelected.add(id);
     setSelectedItems(newSelected);
   };
 
-  const deleteSelected = () => {
-    if (selectedItems.size === 0) {
-      Alert.alert('Nenhum item selecionado');
-      return;
-    }
-    Alert.alert(
-      'Confirmar exclusão',
-      `Excluir ${selectedItems.size} item(s)?`,
-      [
-        {text: 'Cancelar', style: 'cancel'},
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            const newHistory = history.filter(
-              item => !selectedItems.has(item.id),
-            );
-            await saveHistory(newHistory);
-            setSelectedItems(new Set());
-          },
-        },
-      ],
-    );
-  };
-
-  const favoriteSelected = async () => {
-    if (selectedItems.size === 0) {
-      Alert.alert('Nenhum item selecionado');
-      return;
-    }
-    const newHistory = history.map(item =>
-      selectedItems.has(item.id) ? {...item, favorite: true} : item,
-    );
-    await saveHistory(newHistory);
-    setSelectedItems(new Set());
-  };
-
   const filteredHistory = history.filter(item => {
+    const itemDate = new Date(item.date);
+    const now = new Date();
+    const daysAgo = selectedPeriod === '7' ? 7 : 30;
+    if ((now.getTime() - itemDate.getTime()) / (1000 * 60 * 60 * 24) > daysAgo)
+      return false;
     if (blacklistFilters.includes(item.status)) return false;
     if (statusFilters.length > 0 && !statusFilters.includes(item.status))
       return false;
@@ -193,51 +191,8 @@ const HistoryScreen = () => {
       !item.status.toLowerCase().includes(searchTerm.toLowerCase())
     )
       return false;
-    const daysAgo = selectedPeriod === '7' ? 7 : 30;
-    const itemDate = new Date(item.date);
-    const now = new Date();
-    if ((now.getTime() - itemDate.getTime()) / (1000 * 60 * 60 * 24) > daysAgo)
-      return false;
     return true;
   });
-
-  const totalActivations = filteredHistory.length;
-  const completedCount = filteredHistory.filter(
-    i => i.status === 'Concluído',
-  ).length;
-  const ignoredCount = filteredHistory.filter(
-    i => i.status === 'Ignorado',
-  ).length;
-  const avgDuration = (() => {
-    if (filteredHistory.length === 0) return 0;
-    const totalSeconds = filteredHistory.reduce((acc, item) => {
-      const parts = item.duration.split(':').map(Number);
-      return acc + (parts[0] * 3600 + parts[1] * 60 + parts[2]);
-    }, 0);
-    return Math.round(totalSeconds / filteredHistory.length / 60);
-  })();
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const now = new Date();
-      const futureEvents = history
-        .map(i => new Date(i.date))
-        .filter(d => d > now)
-        .sort((a, b) => a.getTime() - b.getTime());
-      if (futureEvents.length === 0) {
-        setNextEventCountdown('Nenhum evento futuro');
-        return;
-      }
-      const diff = futureEvents[0].getTime() - now.getTime();
-      const h = Math.floor(diff / (1000 * 60 * 60));
-      const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const s = Math.floor((diff % (1000 * 60)) / 1000);
-      setNextEventCountdown(`${h}h ${m}m ${s}s`);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [history]);
-
-  const screenWidth = Dimensions.get('window').width - 32;
 
   const chartConfig = {
     backgroundGradientFrom: '#fff',
@@ -278,6 +233,26 @@ const HistoryScreen = () => {
     legendFontSize: 12,
   })).filter(p => p.population > 0);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date();
+      const futureEvents = history
+        .map(i => new Date(i.date))
+        .filter(d => d > now)
+        .sort((a, b) => a.getTime() - b.getTime());
+      if (futureEvents.length === 0) {
+        setNextEventCountdown('Nenhum evento futuro');
+        return;
+      }
+      const diff = futureEvents[0].getTime() - now.getTime();
+      const h = Math.floor(diff / (1000 * 60 * 60));
+      const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const s = Math.floor((diff % (1000 * 60)) / 1000);
+      setNextEventCountdown(`${h}h ${m}m ${s}s`);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [history]);
+
   if (loading) {
     return (
       <View style={[styles.container, styles.center]}>
@@ -312,14 +287,14 @@ const HistoryScreen = () => {
         />
 
         <View style={styles.filterRow}>
-          {['7', '30'].map(period => (
+          {PERIOD_OPTIONS.map(period => (
             <TouchableOpacity
               key={period}
               style={[
                 styles.filterBtn,
                 selectedPeriod === period && styles.filterBtnSelected,
               ]}
-              onPress={() => setSelectedPeriod(period as '7' | '30')}>
+              onPress={() => setSelectedPeriod(period)}>
               <Text
                 style={[
                   styles.filterText,
@@ -331,57 +306,31 @@ const HistoryScreen = () => {
           ))}
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.checkboxRow}>
-          {STATUS_OPTIONS.map(status => {
-            const checked = statusFilters.includes(status);
-            const blacklisted = blacklistFilters.includes(status);
-            return (
-              <View
-                key={status}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  marginRight: 8,
-                }}>
-                <TouchableOpacity
-                  style={[styles.checkbox, checked && styles.checkboxChecked]}
-                  onPress={() => toggleStatus(status)}>
-                  <Text>{status}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.checkbox,
-                    blacklisted && styles.checkboxBlacklisted,
-                  ]}
-                  onPress={() => toggleBlacklist(status)}>
-                  <Text style={{fontSize: 10}}>Ignorar</Text>
-                </TouchableOpacity>
-              </View>
-            );
-          })}
-        </ScrollView>
+        <FilterGroup
+          options={STATUS_OPTIONS}
+          selected={statusFilters}
+          blacklist={blacklistFilters}
+          onToggleSelected={status =>
+            toggleSetItem(
+              status,
+              statusFilters,
+              setStatusFilters,
+              'statusFilters',
+            )
+          }
+          onToggleBlacklist={status =>
+            toggleSetItem(
+              status,
+              blacklistFilters,
+              setBlacklistFilters,
+              'blacklistFilters',
+            )
+          }
+        />
 
-        <View style={styles.summaryContainer}>
-          <View style={styles.summaryBox}>
-            <Text style={styles.summaryValue}>{totalActivations}</Text>
-            <Text style={styles.summaryLabel}>Ativações</Text>
-          </View>
-          <View style={styles.summaryBox}>
-            <Text style={styles.summaryValue}>{completedCount}</Text>
-            <Text style={styles.summaryLabel}>Concluídas</Text>
-          </View>
-          <View style={styles.summaryBox}>
-            <Text style={styles.summaryValue}>{ignoredCount}</Text>
-            <Text style={styles.summaryLabel}>Ignoradas</Text>
-          </View>
-          <View style={styles.summaryBox}>
-            <Text style={styles.summaryValue}>{avgDuration} min</Text>
-            <Text style={styles.summaryLabel}>Média</Text>
-          </View>
-        </View>
+        <Text style={{marginBottom: 8}}>
+          Próximo evento em: {nextEventCountdown}
+        </Text>
 
         <BarChart
           data={barChartData}
@@ -389,9 +338,9 @@ const HistoryScreen = () => {
           height={220}
           chartConfig={chartConfig}
           fromZero
-          style={{marginVertical: 8, borderRadius: 16}}
           yAxisLabel=""
           yAxisSuffix=""
+          style={{marginVertical: 8, borderRadius: 16}}
         />
         {lineChartData.labels.length > 0 && (
           <LineChart
@@ -413,19 +362,12 @@ const HistoryScreen = () => {
             chartConfig={chartConfig}
           />
         )}
-
-        <Text style={{marginBottom: 8}}>
-          Próximo evento em: {nextEventCountdown}
-        </Text>
-
-       
       </View>
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  
   container: {flex: 1, backgroundColor: '#fff', padding: 16},
   center: {justifyContent: 'center', alignItems: 'center'},
   header: {
@@ -473,6 +415,12 @@ const styles = StyleSheet.create({
   summaryBox: {alignItems: 'center'},
   summaryValue: {fontSize: 18, fontWeight: 'bold'},
   summaryLabel: {fontSize: 12, color: '#888'},
+
+  checkboxWrapper: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    marginRight: 18,
+  },
 });
 
 export default HistoryScreen;
