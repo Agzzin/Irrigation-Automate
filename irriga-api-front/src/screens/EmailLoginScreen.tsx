@@ -130,7 +130,7 @@ const EmailLoginScreen = () => {
           </View>
 
           <TouchableOpacity>
-            <Text style={styles.forgotText}>Esqueceu a senha?</Text>
+            <Text style={styles.forgotText}>Esqueceei a senha?</Text>
           </TouchableOpacity>
         </View>
 
