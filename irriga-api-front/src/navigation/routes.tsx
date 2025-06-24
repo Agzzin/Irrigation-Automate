@@ -22,7 +22,7 @@ const Routes = () => {
 
   return (
     <Stack.Navigator
-      initialRouteName="BottomTabs"
+      initialRouteName="WelcomeScreen"
       screenOptions={{headerShown: false}}>
       <Stack.Screen name="BottomTabs" component={BottomTabs} />
       <Stack.Screen name="WelcomeScreen" component={WelcomeScreen} />

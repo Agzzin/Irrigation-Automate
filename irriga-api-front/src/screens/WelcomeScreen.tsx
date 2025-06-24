@@ -1,14 +1,43 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, Image, TouchableOpacity, Alert } from "react-native";
-import { GoogleSignin, statusCodes  } from '@react-native-google-signin/google-signin';
+import React, {useState, useEffect} from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator, // já estava importado, só destaquei
+} from 'react-native';
+import {
+  GoogleSignin,
+  statusCodes,
+} from '@react-native-google-signin/google-signin';
 import {
   LoginButton,
   AccessToken,
   GraphRequest,
   GraphRequestManager,
   Settings,
-  LoginManager
+  LoginManager,
 } from 'react-native-fbsdk-next';
+import PhoneIcon from '../../assets/icons/phone.svg';
+import EnvelopeIcon from '../../assets/icons/envelope.svg';
+import {createStaticNavigation, useNavigation} from '@react-navigation/native';
+import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+
+type RootStackParamList = {
+  BottomTabs: undefined;
+  WelcomeScreen: undefined;
+  EmailLoginScreen: undefined;
+  SignUpScreen: undefined;
+  InitialPage: undefined;
+  ProgrammingPage: undefined;
+  HistoryPage: undefined;
+  SettingsPage: undefined;
+  SmsPage: undefined;
+  SmsPageConfirm: undefined;
+};
 
 interface UserProfile {
   id: string;
@@ -26,30 +55,49 @@ interface FacebookLoginProps {
   onLogoutSuccess?: () => void;
 }
 
-const WEB_CLIENT_ID = '363423156217-fablvceko5uld16gjqn0605kloag1vsr.apps.googleusercontent.com';
+const WEB_CLIENT_ID =
+  '363423156217-fablvceko5uld16gjqn0605kloag1vsr.apps.googleusercontent.com';
 
 GoogleSignin.configure({
-  webClientId: '363423156217-fablvceko5uld16gjqn0605kloag1vsr.apps.googleusercontent.com',
-  offlineAccess: true, 
-  iosClientId: '363423156217-26chv84thgpuif38uh7i12fb9mpmkvot.apps.googleusercontent.com', 
+  webClientId:
+    '363423156217-fablvceko5uld16gjqn0605kloag1vsr.apps.googleusercontent.com',
+  offlineAccess: true,
+  iosClientId:
+    '363423156217-26chv84thgpuif38uh7i12fb9mpmkvot.apps.googleusercontent.com',
 });
 
 const WelcomeScreen = () => {
   const [userInfo, setUserInfo] = useState<any | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [userInfoFacebook, setUserInfoFacebook] = useState<UserProfile | null>(null);
+  const [userInfoFacebook, setUserInfoFacebook] = useState<UserProfile | null>(
+    null,
+  );
   const [loading, setLoading] = useState<boolean>(false);
+  const [loading1, setLoading1] = useState<boolean>(false);
+
+  const handleBotao = async () => {
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    setLoading(false);
+  };
+  const handleBotao1 = async () => {
+    setLoading1(true);
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    setLoading1(false);
+  };
 
   // --- GOOGLE SIGN-IN ---
   const configureGoogleSignIn = () => {
     GoogleSignin.configure({
       webClientId: WEB_CLIENT_ID,
       offlineAccess: true,
-      iosClientId: '363423156217-26chv84thgpuif38uh7i12fb9mpmkvot.apps.googleusercontent.com',
+      iosClientId:
+        '363423156217-26chv84thgpuif38uh7i12fb9mpmkvot.apps.googleusercontent.com',
     });
   };
 
   const handleGoogleSignIn = async () => {
+    setLoading(true);
     try {
       await GoogleSignin.hasPlayServices();
       const user = await GoogleSignin.signIn();
@@ -57,10 +105,15 @@ const WelcomeScreen = () => {
       setError(null);
       console.log('User Info:', user);
       if (
-        typeof user === 'object' && user !== null &&
-        'idToken' in user && typeof user.idToken === 'string' &&
-        'user' in user && typeof user.user === 'object' && user.user !== null &&
-        'email' in user.user && typeof user.user.email === 'string'
+        typeof user === 'object' &&
+        user !== null &&
+        'idToken' in user &&
+        typeof user.idToken === 'string' &&
+        'user' in user &&
+        typeof user.user === 'object' &&
+        user.user !== null &&
+        'email' in user.user &&
+        typeof user.user.email === 'string'
       ) {
         Alert.alert('Sucesso', `Logado como: ${user.user.email}`);
       }
@@ -77,24 +130,32 @@ const WelcomeScreen = () => {
       }
       setUserInfo(null);
     }
+    setLoading(false);
   };
 
   // --- FACEBOOK SIGN-IN ---
   const handleFacebookLogin = async () => {
+    setLoading1(true);
     try {
-      const result = await LoginManager.logInWithPermissions(['public_profile', 'email']);
+      const result = await LoginManager.logInWithPermissions([
+        'public_profile',
+        'email',
+      ]);
       if (result.isCancelled) {
         setError('Login do Facebook cancelado pelo usuário.');
+        setLoading1(false);
         return;
       }
       const data = await AccessToken.getCurrentAccessToken();
-      if (!data) {  
+      if (!data) {
         setError('Erro ao obter token de acesso do Facebook.');
+        setLoading1(false);
         return;
       }
       fetchFacebookProfile(data.accessToken);
     } catch (error) {
       setError('Erro ao fazer login com o Facebook.');
+      setLoading1(false);
       console.error('Facebook Login Error:', error);
     }
   };
@@ -103,7 +164,10 @@ const WelcomeScreen = () => {
     try {
       const currentAccessToken = await AccessToken.getCurrentAccessToken();
       if (currentAccessToken) {
-        console.log('Token de acesso existente:', currentAccessToken.accessToken);
+        console.log(
+          'Token de acesso existente:',
+          currentAccessToken.accessToken,
+        );
         fetchFacebookProfile(currentAccessToken.accessToken);
       }
     } catch (error) {
@@ -112,7 +176,6 @@ const WelcomeScreen = () => {
   };
 
   const fetchFacebookProfile = (token: string) => {
-    setLoading(true);
     const infoRequest = new GraphRequest(
       '/me',
       {
@@ -124,11 +187,11 @@ const WelcomeScreen = () => {
         },
       },
       (error, result: any) => {
-        setLoading(false);
+        setLoading1(false);
         if (error) {
           Alert.alert('Erro ao buscar perfil:', error.toString());
           console.error('Erro ao buscar perfil do Facebook:', error);
-          setUserInfo(null);
+          setUserInfoFacebook(null); // Corrigido aqui!
         } else {
           const profile: UserProfile = result;
           setUserInfo(profile);
@@ -146,55 +209,97 @@ const WelcomeScreen = () => {
     checkCurrentFacebookAccessToken();
   }, []);
 
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
   return (
     <View style={styles.container}>
-    <View style={styles.view1}>
-      <Image source={require('../../assets/icons/logo-text.png')} style={styles.logo} />
-      <Text style={styles.title}>Conecte, irrigue, colha.</Text>
-    </View>
-
-    <View style={styles.view2}>
-      <TouchableOpacity style={styles.subscribe}>
-        <Image source={require('../../assets/icons/envelope.png')} style={{ width: 24, height: 24}} />
-        <Text style={styles.subscribeText}>Continuar com e-mail</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.buttonAPIs} onPress={handleGoogleSignIn}>
-        <Image source={require('../../assets/icons/google.png')} style={{ width: 24, height: 24 }} />
-        <Text style={styles.subscribeText}>Continuar com o {'\n'}Google</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.buttonAPIs} onPress={handleFacebookLogin}>
-        <Image source={require('../../assets/icons/facebook.png')} style={{ width: 24, height: 24 }} />
-        <Text style={styles.subscribeText}>Continuar com o {'\n'}Facebook</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.buttonAPIs}>
-        <Text style={styles.subscribeText}>Continuar com a {'\n'}Apple</Text>
-      </TouchableOpacity>
-
-      <View>
-        <Text style={styles.description}>
-          Already have an account? 
-          <Text style={{ color: "#00CB21" }} onPress={() => {}}> Login</Text>
-        </Text>
+      <View style={styles.view1}>
+        <Image
+          source={require('../../assets/icons/logo-text.png')}
+          style={styles.logo}
+        />
+        <Text style={styles.title}>Conecte, irrigue, colha.</Text>
       </View>
-    </View>
-    
+
+      <View style={styles.view2}>
+        <TouchableOpacity
+          style={styles.subscribe}
+          onPress={() => navigation.navigate('EmailLoginScreen')}>
+          <EnvelopeIcon width={24} height={24} color="#ffffff" />
+          <Text style={styles.subscribeText}>Continuar com e-mail</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.buttonAPIs}
+          onPress={handleGoogleSignIn}
+          disabled={loading}>
+          {loading ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <>
+              <Image
+                source={require('../../assets/icons/google.png')}
+                style={{width: 24, height: 24}}
+              />
+              <Text style={styles.subscribeText}>
+                Continuar com o {'\n'}Google
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.buttonAPIs}
+          onPress={handleFacebookLogin}
+          disabled={loading1}>
+          {loading1 ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <>
+              <Image
+                source={require('../../assets/icons/facebook.png')}
+                style={{width: 24, height: 24}}
+              />
+              <Text style={styles.subscribeText}>
+                Continuar com o {'\n'}Facebook
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.buttonAPIs}
+          onPress={() => navigation.navigate('SmsPage')}>
+          <PhoneIcon width={24} height={24} color="#ffffff" />
+          <Text style={styles.subscribeText}>
+            Continuar com um{'\n'}número de telefone
+          </Text>
+        </TouchableOpacity>
+
+        <View>
+          <Text style={styles.description}>
+            Already have an account?
+            <Text style={{color: '#00CB21'}} onPress={() => {}}>
+              {' '}
+              Login
+            </Text>
+          </Text>
+        </View>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-   flex:1,
-   backgroundColor: "#000000",
-
-  }, 
+    flex: 1,
+    backgroundColor: '#000000',
+  },
   view1: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   view2: {
@@ -203,16 +308,16 @@ const styles = StyleSheet.create({
 
   title: {
     fontSize: 16,
-    color: "gray",
-    fontWeight: "bold",
+    color: 'gray',
+    fontWeight: 'bold',
     marginTop: 20,
-    textAlign: "center",
+    textAlign: 'center',
   },
   description: {
     fontSize: 16,
-    color: "gray",
+    color: 'gray',
     marginTop: 10,
-    textAlign: "center",
+    textAlign: 'center',
   },
 
   logo: {
@@ -221,37 +326,36 @@ const styles = StyleSheet.create({
     height: 200,
   },
 
-  subscribe:{
-    backgroundColor: "#00CB21",
+  subscribe: {
+    backgroundColor: '#00CB21',
     padding: 15,
     borderRadius: 50,
     marginTop: 20,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     marginHorizontal: 24,
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: 10,
   },
 
   subscribeText: {
     fontSize: 18,
-    color: "#ffffff",
-    fontWeight: "bold",
-    textAlign: "center",
-    justifyContent: "center",
+    color: '#ffffff',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    justifyContent: 'center',
   },
 
   buttonAPIs: {
-    backgroundColor: "#000000",
+    backgroundColor: '#000000',
     padding: 15,
     borderRadius: 50,
     marginTop: 5,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     marginHorizontal: 24,
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: 15,
-
   },
 });
 
