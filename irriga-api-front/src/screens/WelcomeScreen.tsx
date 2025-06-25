@@ -6,14 +6,13 @@ import {
   Image,
   TouchableOpacity,
   Alert,
-  ActivityIndicator, // já estava importado, só destaquei
+  ActivityIndicator, 
 } from 'react-native';
 import {
   GoogleSignin,
   statusCodes,
 } from '@react-native-google-signin/google-signin';
 import {
-  LoginButton,
   AccessToken,
   GraphRequest,
   GraphRequestManager,
@@ -22,22 +21,10 @@ import {
 } from 'react-native-fbsdk-next';
 import PhoneIcon from '../../assets/icons/phone.svg';
 import EnvelopeIcon from '../../assets/icons/envelope.svg';
-import {createStaticNavigation, useNavigation} from '@react-navigation/native';
-import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types/RootStackParamList';
 
-type RootStackParamList = {
-  BottomTabs: undefined;
-  WelcomeScreen: undefined;
-  EmailLoginScreen: undefined;
-  SignUpScreen: undefined;
-  InitialPage: undefined;
-  ProgrammingPage: undefined;
-  HistoryPage: undefined;
-  SettingsPage: undefined;
-  SmsPage: undefined;
-  SmsPageConfirm: undefined;
-};
 
 interface UserProfile {
   id: string;
@@ -191,7 +178,7 @@ const WelcomeScreen = () => {
         if (error) {
           Alert.alert('Erro ao buscar perfil:', error.toString());
           console.error('Erro ao buscar perfil do Facebook:', error);
-          setUserInfoFacebook(null); // Corrigido aqui!
+          setUserInfoFacebook(null); 
         } else {
           const profile: UserProfile = result;
           setUserInfo(profile);
@@ -280,7 +267,7 @@ const WelcomeScreen = () => {
         <View>
           <Text style={styles.description}>
             Already have an account?
-            <Text style={{color: '#00CB21'}} onPress={() => {}}>
+            <Text style={{color: '#00CB21'}} onPress={() => navigation.navigate('EmailLoginScreen')}>
               {' '}
               Login
             </Text>

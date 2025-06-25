@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, {useState, useRef, useEffect} from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,16 @@ import {
   Switch,
   Animated,
   KeyboardTypeOptions,
-} from "react-native";
+} from 'react-native';
+import {useNavigation} from '@react-navigation/native';
+import {RootStackParamList} from '../types/RootStackParamList';
+import {StackNavigationProp} from '@react-navigation/stack';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+type EmailLoginScreenNavigationProp = StackNavigationProp<
+  RootStackParamList,
+  'InitialPage'
+>;
 
 type FloatingLabelInputProps = {
   label: string;
@@ -17,9 +26,17 @@ type FloatingLabelInputProps = {
   onChangeText: (text: string) => void;
   secureTextEntry?: boolean;
   keyboardType?: KeyboardTypeOptions;
-  autoCapitalize?: "none" | "sentences" | "words" | "characters";
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   placeholderTextColor?: string;
   [key: string]: any;
+};
+
+type Usuarios = {
+  id: number;
+  name: string;
+  email: string;
+  telefone: string;
+  senha: string;
 };
 
 const FloatingLabelInput: React.FC<FloatingLabelInputProps> = ({
@@ -27,9 +44,9 @@ const FloatingLabelInput: React.FC<FloatingLabelInputProps> = ({
   value,
   onChangeText,
   secureTextEntry = false,
-  keyboardType = "default",
-  autoCapitalize = "sentences",
-  placeholderTextColor = "#aaa", 
+  keyboardType = 'default',
+  autoCapitalize = 'sentences',
+  placeholderTextColor = '#aaa',
   ...props
 }) => {
   const [isFocused, setIsFocused] = useState(false);
@@ -44,7 +61,7 @@ const FloatingLabelInput: React.FC<FloatingLabelInputProps> = ({
   }, [isFocused, value]);
 
   const labelStyle = {
-    position: "absolute" as const,
+    position: 'absolute' as const,
     left: 30,
     top: animatedIsFocused.interpolate({
       inputRange: [0, 1],
@@ -54,14 +71,14 @@ const FloatingLabelInput: React.FC<FloatingLabelInputProps> = ({
       inputRange: [0, 1],
       outputRange: [18, 14],
     }),
-    color: isFocused ? "#00CB21" : placeholderTextColor,
-    backgroundColor: "#000",
+    color: isFocused ? '#00CB21' : placeholderTextColor,
+    backgroundColor: '#000',
     paddingHorizontal: 4,
     zIndex: 2,
   };
 
   return (
-    <View style={{ marginBottom: 24, marginHorizontal: 24, paddingTop: 8 }}>
+    <View style={{marginBottom: 24, marginHorizontal: 24, paddingTop: 8}}>
       <Animated.Text style={labelStyle}>{label}</Animated.Text>
       <TextInput
         style={styles.input}
@@ -81,18 +98,53 @@ const FloatingLabelInput: React.FC<FloatingLabelInputProps> = ({
 
 const EmailLoginScreen = () => {
   const [rememberMe, setRememberMe] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [user, setUser] = useState<Usuarios[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const navigation = useNavigation<EmailLoginScreenNavigationProp>();
+
+  const HandleLogin = async () => {
+    setLoading(true);
+    setErrorMsg(null);
+
+    const url = 'http://localhost:3000/login';
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({email, senha: password}),
+      });
+
+      if (response.ok) {
+        const {token, usuario} = await response.json();
+        await AsyncStorage.setItem('token', token);
+        console.log('Usuario logado', usuario);
+        navigation.navigate('InitialPage');
+      } else if (response.status === 401) {
+        setErrorMsg('E-mail ou senha inválidos.');
+      } else {
+        setErrorMsg('Ocorreu um erro inesperado. Tente novamente.');
+      }
+    } catch (err) {
+      console.error('Erro de rede:', err);
+      setErrorMsg('Falha de conexão com o servidor.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
       <View style={styles.logoContainer}>
         <Image
-          source={require("../../assets/icons/bola-verde.png")}
+          source={require('../../assets/icons/bola-verde.png')}
           style={styles.logo}
         />
         <Text style={styles.title}>
-          Welcome Back,{"\n"}
+          Welcome Back,{'\n'}
           <Text style={styles.subtitle}>Log in!</Text>
         </Text>
       </View>
@@ -121,10 +173,10 @@ const EmailLoginScreen = () => {
             <Switch
               value={rememberMe}
               onValueChange={setRememberMe}
-              trackColor={{ false: "#767577", true: "#00CB21" }}
-              thumbColor={rememberMe ? "#fff" : "#f4f3f4"}
+              trackColor={{false: '#767577', true: '#00CB21'}}
+              thumbColor={rememberMe ? '#fff' : '#f4f3f4'}
               ios_backgroundColor="#3e3e3e"
-              style={{ transform: [{ scaleX: 1.0 }, { scaleY: 0.8 }] }}
+              style={{transform: [{scaleX: 1.0}, {scaleY: 0.8}]}}
             />
             <Text style={styles.rememberMeText}>Lembrar-me</Text>
           </View>
@@ -134,7 +186,7 @@ const EmailLoginScreen = () => {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.buttonEntrar}>
+        <TouchableOpacity style={styles.buttonEntrar} onPress={HandleLogin}>
           <Text style={styles.buttonText}>Entrar</Text>
         </TouchableOpacity>
       </View>
@@ -147,11 +199,11 @@ export default EmailLoginScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: '#000000',
   },
   logoContainer: {
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   logo: {
     width: 410,
@@ -159,24 +211,24 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    color: "#FFFFFF",
+    color: '#FFFFFF',
     fontSize: 35,
-    fontWeight: "bold",
-    position: "absolute",
-    textAlign: "center",
+    fontWeight: 'bold',
+    position: 'absolute',
+    textAlign: 'center',
     width: 410,
     height: 400,
     paddingTop: 40,
     paddingRight: 140,
   },
   subtitle: {
-    color: "#ffffff",
+    color: '#ffffff',
     fontSize: 80,
-    fontWeight: "bold",
+    fontWeight: 'bold',
   },
   input: {
-    backgroundColor: "#000",
-    color: "#fff",
+    backgroundColor: '#000',
+    color: '#fff',
     paddingHorizontal: 20,
     paddingVertical: 14,
     fontSize: 18,
@@ -184,37 +236,37 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   optionsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginHorizontal: 24,
     marginBottom: 16,
   },
   rememberMe: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   rememberMeText: {
-    color: "#fff",
+    color: '#fff',
     fontSize: 16,
     marginLeft: 8,
   },
   forgotText: {
-    color: "#00CB21",
+    color: '#00CB21',
     fontSize: 16,
-    textDecorationLine: "underline",
+    textDecorationLine: 'underline',
   },
   buttonEntrar: {
-    backgroundColor: "#00CB21",
+    backgroundColor: '#00CB21',
     borderRadius: 50,
     padding: 12,
     marginTop: 30,
     marginHorizontal: 70,
   },
   buttonText: {
-    color: "#fff",
-    textAlign: "center",
+    color: '#fff',
+    textAlign: 'center',
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: 'bold',
   },
 });
