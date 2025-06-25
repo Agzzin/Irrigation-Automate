@@ -53,8 +53,35 @@ app.post('/login', (req, res) => { (async () => {
   })();
 });
 
+app.post('/signup', (req,res) => {(async () =>{
+   try {
+    const { nome, email, senha } = req.body;
+
+    if (!nome || !email || !senha) {
+      return res.status(400).json({ message: 'Nome, email e senha são obrigatórios' });
+    }
+
+    const usuarioExistente = await prisma.usuario.findUnique({ where: { email } });
+    if (usuarioExistente) {
+      return res.status(409).json({ message: 'E-mail já cadastrado' });
+    }
+
+    const senhaHash = await bcrypt.hash(senha, 10);
+
+    await prisma.usuario.create({
+      data: { nome, email, senha: senhaHash },
+    });
+
+    return res.status(201).json({ message: 'Usuário criado com sucesso' });
+
+  } catch (error) {
+    console.error(error);          
+    return res.status(500).json({ message: 'Erro interno no servidor' });
+  }
+})});
+
 
 const PORT = 3000;
 app.listen(PORT, () => {
-  console.log(`Servidor rodando em http://localhost:${PORT}`);
+  console.log(`Servidor rodando em http://192.168.1.10:${PORT}`);
 });
