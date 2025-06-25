@@ -1,6 +1,8 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import cors from 'cors';
+import bcrypt from 'bcryptjs'
+import jwt from 'jsonwebtoken';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -8,7 +10,6 @@ const prisma = new PrismaClient();
 app.use(cors());
 app.use(express.json());
 
-// Rota GET para listar usuários
 app.get('/usuarios', async (req, res) => {
   try {
     const usuarios = await prisma.usuario.findMany();
@@ -18,7 +19,41 @@ app.get('/usuarios', async (req, res) => {
   }
 });
 
-// Porta do servidor
+app.post('/login', (req, res) => { (async () => {
+    try {
+      const { email, senha } = req.body;
+      if (!email || !senha) {
+        return res.status(400).send('Faltam credenciais');
+      }
+
+      const user = await prisma.usuario.findUnique({ where: { email } });
+      if (!user) {
+        return res.status(401).send('Credenciais inválidas');
+      }
+
+      const ok = await bcrypt.compare(senha, user.senha);
+      if (!ok) {
+        return res.status(401).send('Credenciais inválidas');
+      }
+
+      const token = jwt.sign(
+        { userId: user.id },
+        process.env.JWT_SECRET!, 
+        { expiresIn: '2h' }
+      );
+
+      return res.json({
+        token,
+        usuario: { id: user.id, nome: user.nome, email: user.email },
+      });
+    } catch (err) {
+      console.error('Erro interno no login:', err);
+      return res.status(500).send('Erro interno no servidor');
+    }
+  })();
+});
+
+
 const PORT = 3000;
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);
