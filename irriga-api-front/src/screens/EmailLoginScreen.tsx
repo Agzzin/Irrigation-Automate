@@ -109,7 +109,7 @@ const EmailLoginScreen = () => {
     setLoading(true);
     setErrorMsg(null);
 
-    const url = 'http://localhost:3000/login';
+    const url = 'http://192.168.1.10/login';
 
     try {
       const response = await fetch(url, {

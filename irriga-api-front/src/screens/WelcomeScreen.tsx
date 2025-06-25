@@ -196,8 +196,7 @@ const WelcomeScreen = () => {
     checkCurrentFacebookAccessToken();
   }, []);
 
-  const navigation =
-    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   return (
     <View style={styles.container}>
@@ -212,7 +211,7 @@ const WelcomeScreen = () => {
       <View style={styles.view2}>
         <TouchableOpacity
           style={styles.subscribe}
-          onPress={() => navigation.navigate('EmailLoginScreen')}>
+          onPress={() => navigation.navigate('SignUpScreen')}>
           <EnvelopeIcon width={24} height={24} color="#ffffff" />
           <Text style={styles.subscribeText}>Continuar com e-mail</Text>
         </TouchableOpacity>
