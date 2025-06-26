@@ -1,4 +1,3 @@
-// src/screens/SignUpScreen.tsx
 import React, {useState, useRef} from 'react';
 import {
   View,
@@ -98,7 +97,7 @@ const SignUpScreen: React.FC = () => {
 
     setLoading(true);
     try {
-      const response = await fetch('http://192.168.1.10:3000/signup', {
+      const response = await fetch('https://11c9-200-106-218-64.ngrok-free.app/signup', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({nome, email, senha}),
@@ -183,7 +182,7 @@ const SignUpScreen: React.FC = () => {
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.buttonText}>Entrar</Text>
+          <Text style={styles.buttonText}>Cadastrar</Text>
         )}
       </TouchableOpacity>
     </View>

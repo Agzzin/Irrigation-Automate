@@ -9,11 +9,13 @@ import {
   Switch,
   Animated,
   KeyboardTypeOptions,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
-import {RootStackParamList} from '../types/RootStackParamList';
 import {StackNavigationProp} from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {RootStackParamList} from '../types/RootStackParamList';
 
 type EmailLoginScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -31,13 +33,9 @@ type FloatingLabelInputProps = {
   [key: string]: any;
 };
 
-type Usuarios = {
-  id: number;
-  name: string;
-  email: string;
-  telefone: string;
-  senha: string;
-};
+const API_BASE_URL = 'https://11c9-200-106-218-64.ngrok-free.app';
+
+const LOGIN_URL = `${API_BASE_URL}/login`;
 
 const FloatingLabelInput: React.FC<FloatingLabelInputProps> = ({
   label,
@@ -52,7 +50,7 @@ const FloatingLabelInput: React.FC<FloatingLabelInputProps> = ({
   const [isFocused, setIsFocused] = useState(false);
   const animatedIsFocused = useRef(new Animated.Value(value ? 1 : 0)).current;
 
-  React.useEffect(() => {
+  useEffect(() => {
     Animated.timing(animatedIsFocused, {
       toValue: isFocused || value ? 1 : 0,
       duration: 200,
@@ -96,41 +94,57 @@ const FloatingLabelInput: React.FC<FloatingLabelInputProps> = ({
   );
 };
 
-const EmailLoginScreen = () => {
+const EmailLoginScreen: React.FC = () => {
+  const navigation = useNavigation<EmailLoginScreenNavigationProp>();
+
   const [rememberMe, setRememberMe] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [user, setUser] = useState<Usuarios[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const navigation = useNavigation<EmailLoginScreenNavigationProp>();
 
-  const HandleLogin = async () => {
+  const handleLogin = async () => {
+    const emailTrim = email.trim();
+    const passwordTrim = password.trim();
+
+    if (!emailTrim || !passwordTrim) {
+      setErrorMsg('Preencha e-mail e senha.');
+      return;
+    }
+
     setLoading(true);
     setErrorMsg(null);
 
-    const url = 'http://192.168.1.10/login';
-
     try {
-      const response = await fetch(url, {
+      const response = await fetch(LOGIN_URL, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({email, senha: password}),
+        body: JSON.stringify({email: emailTrim, senha: passwordTrim}),
       });
 
-      if (response.ok) {
-        const {token, usuario} = await response.json();
-        await AsyncStorage.setItem('token', token);
-        console.log('Usuario logado', usuario);
-        navigation.navigate('InitialPage');
-      } else if (response.status === 401) {
-        setErrorMsg('E-mail ou senha inválidos.');
-      } else {
-        setErrorMsg('Ocorreu um erro inesperado. Tente novamente.');
+      const raw = await response.text();
+      console.log('LOGIN →', response.status, raw);
+
+      if (!response.ok) {
+        let mensagem = `Erro ${response.status}`;
+        try {
+          mensagem = JSON.parse(raw).message || mensagem;
+        } catch (_) {}
+        setErrorMsg(mensagem);
+        return;
       }
+
+      const {token, usuario} = JSON.parse(raw);
+
+      if (rememberMe) {
+        await AsyncStorage.setItem('token', token);
+      }
+
+      console.log('Usuário autenticado', usuario);
+      navigation.navigate('InitialPage');
     } catch (err) {
-      console.error('Erro de rede:', err);
-      setErrorMsg('Falha de conexão com o servidor.');
+      console.error('Falha de rede', err);
+      setErrorMsg('Não foi possível conectar ao servidor.');
     } finally {
       setLoading(false);
     }
@@ -149,47 +163,51 @@ const EmailLoginScreen = () => {
         </Text>
       </View>
 
-      <View>
-        <FloatingLabelInput
-          label="E-mail"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          placeholderTextColor="#fff"
-        />
-        <FloatingLabelInput
-          label="Senha"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          keyboardType="default"
-          autoCapitalize="none"
-          placeholderTextColor="#fff"
-        />
+      <FloatingLabelInput
+        label="E-mail"
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        placeholderTextColor="#fff"
+      />
+      <FloatingLabelInput
+        label="Senha"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+        autoCapitalize="none"
+        placeholderTextColor="#fff"
+      />
 
-        <View style={styles.optionsRow}>
-          <View style={styles.rememberMe}>
-            <Switch
-              value={rememberMe}
-              onValueChange={setRememberMe}
-              trackColor={{false: '#767577', true: '#00CB21'}}
-              thumbColor={rememberMe ? '#fff' : '#f4f3f4'}
-              ios_backgroundColor="#3e3e3e"
-              style={{transform: [{scaleX: 1.0}, {scaleY: 0.8}]}}
-            />
-            <Text style={styles.rememberMeText}>Lembrar-me</Text>
-          </View>
-
-          <TouchableOpacity>
-            <Text style={styles.forgotText}>Esqueceei a senha?</Text>
-          </TouchableOpacity>
+      <View style={styles.optionsRow}>
+        <View style={styles.rememberMe}>
+          <Switch
+            value={rememberMe}
+            onValueChange={setRememberMe}
+            trackColor={{false: '#767577', true: '#00CB21'}}
+            thumbColor={rememberMe ? '#fff' : '#f4f3f4'}
+            style={{transform: [{scaleX: 1.0}, {scaleY: 0.8}]}}
+          />
+          <Text style={styles.rememberMeText}>Lembrar-me</Text>
         </View>
-
-        <TouchableOpacity style={styles.buttonEntrar} onPress={HandleLogin}>
-          <Text style={styles.buttonText}>Entrar</Text>
+        <TouchableOpacity onPress={() => Alert.alert('Em breve')}>
+          <Text style={styles.forgotText}>Esqueci a senha?</Text>
         </TouchableOpacity>
       </View>
+
+      {errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+
+      {loading ? (
+        <ActivityIndicator size="large" color="#00CB21" />
+      ) : (
+        <TouchableOpacity
+          style={styles.buttonEntrar}
+          onPress={handleLogin}
+          disabled={loading}>
+          <Text style={styles.buttonText}>Entrar</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -268,5 +286,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  errorText: {
+    color: '#ff4d4d',
+    textAlign: 'center',
+    marginTop: -10,
+    marginBottom: 10,
+    fontSize: 16,
   },
 });
