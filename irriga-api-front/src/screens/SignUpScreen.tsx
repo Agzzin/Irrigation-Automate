@@ -1,4 +1,4 @@
-import React, {useState, useRef} from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,9 +12,10 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import {useNavigation} from '@react-navigation/native';
-import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {RootStackParamList} from '../types/RootStackParamList';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types/RootStackParamList';
+import { useAuth } from '../contexts/AuthContext'; 
 
 type SignUpNav = NativeStackNavigationProp<RootStackParamList, 'InitialPage'>;
 
@@ -53,8 +54,8 @@ const FloatingLabelInput: React.FC<FloatingLabelInputProps> = ({
   const labelStyle = {
     position: 'absolute' as const,
     left: 30,
-    top: animated.interpolate({inputRange: [0, 1], outputRange: [18, -10]}),
-    fontSize: animated.interpolate({inputRange: [0, 1], outputRange: [14, 12]}),
+    top: animated.interpolate({ inputRange: [0, 1], outputRange: [18, -10] }),
+    fontSize: animated.interpolate({ inputRange: [0, 1], outputRange: [14, 12] }),
     color: isFocused ? '#00CB21' : placeholderTextColor,
     backgroundColor: '#000',
     paddingHorizontal: 4,
@@ -62,7 +63,7 @@ const FloatingLabelInput: React.FC<FloatingLabelInputProps> = ({
   };
 
   return (
-    <View style={{marginBottom: 24, marginHorizontal: 24, paddingTop: 8}}>
+    <View style={{ marginBottom: 24, marginHorizontal: 24, paddingTop: 8 }}>
       <Animated.Text style={labelStyle}>{label}</Animated.Text>
       <TextInput
         style={styles.input}
@@ -82,6 +83,7 @@ const FloatingLabelInput: React.FC<FloatingLabelInputProps> = ({
 
 const SignUpScreen: React.FC = () => {
   const navigation = useNavigation<SignUpNav>();
+  const { login } = useAuth(); // <-- pega login do contexto
 
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
@@ -97,18 +99,36 @@ const SignUpScreen: React.FC = () => {
 
     setLoading(true);
     try {
-      const response = await fetch('https://11c9-200-106-218-64.ngrok-free.app/signup', {
+      // 1) Chama endpoint de signup
+      const response = await fetch('https://11c9-200-106-218-64.ngrok-free.app/usuarios/signup', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({nome, email, senha}),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome, email, senha }),
       });
 
       if (!response.ok) {
-        const {message} = await response.json();
+        const { message } = await response.json();
         throw new Error(message || 'Erro ao cadastrar');
       }
 
-      Alert.alert('Sucesso!', 'Conta criada com sucesso.');
+      // 2) Após sucesso, faz login automático
+      const loginResponse = await fetch('https://11c9-200-106-218-64.ngrok-free.app/usuarios/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, senha }),
+      });
+
+      if (!loginResponse.ok) {
+        const { message } = await loginResponse.json();
+        throw new Error(message || 'Erro no login após cadastro');
+      }
+
+      const loginData = await loginResponse.json();
+
+      // 3) Usa o login do contexto para salvar token e usuário
+      await login(loginData.token, loginData.usuario);
+
+      Alert.alert('Sucesso!', 'Conta criada e login realizado com sucesso.');
       navigation.navigate('InitialPage');
     } catch (err: any) {
       Alert.alert('Erro', err.message);
@@ -120,10 +140,7 @@ const SignUpScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <View style={styles.logoContainer}>
-        <Image
-          source={require('../../assets/icons/bola-verde.png')}
-          style={styles.logo}
-        />
+        <Image source={require('../../assets/icons/bola-verde.png')} style={styles.logo} />
         <View style={styles.titleContainer}>
           <Text style={styles.title}>Hello,</Text>
           <Text style={styles.subtitle}>SignUp!</Text>
@@ -160,14 +177,12 @@ const SignUpScreen: React.FC = () => {
           <Switch
             value={rememberMe}
             onValueChange={setRememberMe}
-            trackColor={{false: '#767577', true: '#00CB21'}}
+            trackColor={{ false: '#767577', true: '#00CB21' }}
             thumbColor={rememberMe ? '#fff' : '#f4f3f4'}
             ios_backgroundColor="#3e3e3e"
-            style={{transform: [{scaleX: 1.0}, {scaleY: 0.8}]}}
+            style={{ transform: [{ scaleX: 1.0 }, { scaleY: 0.8 }] }}
           />
-          <Text style={styles.rememberMeText}>
-            Eu aceito os termos {'\n'}e condições do app
-          </Text>
+          <Text style={styles.rememberMeText}>Eu aceito os termos {'\n'}e condições do app</Text>
         </View>
 
         <TouchableOpacity>
@@ -176,14 +191,11 @@ const SignUpScreen: React.FC = () => {
       </View>
 
       <TouchableOpacity
-        style={[styles.buttonEntrar, loading && {opacity: 0.6}]}
+        style={[styles.buttonEntrar, loading && { opacity: 0.6 }]}
         onPress={handleSignUp}
-        disabled={loading}>
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Cadastrar</Text>
-        )}
+        disabled={loading}
+      >
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Cadastrar</Text>}
       </TouchableOpacity>
     </View>
   );

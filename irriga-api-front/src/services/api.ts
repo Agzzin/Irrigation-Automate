@@ -1,7 +1,17 @@
-import axios from "axios";
+import { useAuth } from '../contexts/AuthContext';
 
-const URL_API = "http:localhost:300"
+export const useApi = () => {
+  const { token } = useAuth();
 
-export const API = axios.create({
-    baseURL: URL_API
-})
+  const authFetch = async (url: string, options: RequestInit = {}) => {
+    const headers = {
+      ...options.headers,
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    };
+
+    return fetch(url, { ...options, headers });
+  };
+
+  return { authFetch };
+};

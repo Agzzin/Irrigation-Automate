@@ -1,13 +1,14 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import {NavigationContainer} from '@react-navigation/native';
 import Routes from './src/navigation/routes';
-import BottomTabs from './src/navigation/BottomTabs';
-
+import {AuthProvider} from './src/contexts/AuthContext';
 
 export default function App() {
   return (
-    <NavigationContainer>
-      <Routes />
-    </NavigationContainer>
+    <AuthProvider>
+      <NavigationContainer>
+        <Routes />
+      </NavigationContainer>
+    </AuthProvider>
   );
 }

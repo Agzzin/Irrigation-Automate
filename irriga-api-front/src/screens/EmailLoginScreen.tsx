@@ -16,6 +16,7 @@ import {useNavigation} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {RootStackParamList} from '../types/RootStackParamList';
+import { useAuth } from '../contexts/AuthContext';
 
 type EmailLoginScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -102,54 +103,48 @@ const EmailLoginScreen: React.FC = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const {login} = useAuth()
 
   const handleLogin = async () => {
-    const emailTrim = email.trim();
-    const passwordTrim = password.trim();
+  const emailTrim = email.trim();
+  const passwordTrim = password.trim();
 
-    if (!emailTrim || !passwordTrim) {
-      setErrorMsg('Preencha e-mail e senha.');
-      return;
-    }
-
+  try {
     setLoading(true);
     setErrorMsg(null);
 
-    try {
-      const response = await fetch(LOGIN_URL, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({email: emailTrim, senha: passwordTrim}),
-      });
+    const response = await fetch(LOGIN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: emailTrim, senha: passwordTrim }),
+    });
 
-      const raw = await response.text();
-      console.log('LOGIN →', response.status, raw);
+    const raw = await response.text();
+    console.log('LOGIN →', response.status, raw);
 
-      if (!response.ok) {
-        let mensagem = `Erro ${response.status}`;
-        try {
-          mensagem = JSON.parse(raw).message || mensagem;
-        } catch (_) {}
-        setErrorMsg(mensagem);
-        return;
-      }
-
-      const {token, usuario} = JSON.parse(raw);
-
-      if (rememberMe) {
-        await AsyncStorage.setItem('token', token);
-      }
-
-      console.log('Usuário autenticado', usuario);
-      navigation.navigate('InitialPage');
-    } catch (err) {
-      console.error('Falha de rede', err);
-      setErrorMsg('Não foi possível conectar ao servidor.');
-    } finally {
-      setLoading(false);
+    if (!response.ok) {
+      let mensagem = `Erro ${response.status}`;
+      try {
+        mensagem = JSON.parse(raw).message || mensagem;
+      } catch (_) {}
+      setErrorMsg(mensagem);
+      return;
     }
-  };
 
+    const { token, usuario } = JSON.parse(raw);
+
+    // Armazena token + usuário no contexto + AsyncStorage
+    await login(token, usuario);
+
+    console.log('Usuário autenticado:', usuario);
+    navigation.navigate('InitialPage');
+  } catch (err) {
+    console.error('Falha de rede', err);
+    setErrorMsg('Não foi possível conectar ao servidor.');
+  } finally {
+    setLoading(false);
+  }
+};
   return (
     <View style={styles.container}>
       <View style={styles.logoContainer}>
