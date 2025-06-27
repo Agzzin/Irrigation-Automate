@@ -1,18 +1,37 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-model usuario {
-  id       Int     @id @default(autoincrement())
-  nome     String  @db.VarChar(100)
-  email    String  @unique @db.VarChar(100)
-  telefone String? @db.VarChar(20)
-  senha    String  @db.VarChar(255)
+generator client {
+  provider = "prisma-client-js"
+}
 
-   @@map("usuarios")
+model Usuario {
+  id        Int       @id @default(autoincrement())
+  nome      String    @db.VarChar(100)
+  email     String    @unique @db.VarChar(100)
+  telefone  String?   @db.VarChar(20)
+  senha     String    @db.VarChar(255)
+
+  bombas   Bomba[]
+  leituras Leitura[]
+}
+
+model Bomba {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  ativo     Boolean  @default(false)
+
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
+  usuarioId Int
+}
+
+model Leitura {
+  id          Int      @id @default(autoincrement())
+  umidadeSolo Float
+  criadoEm    DateTime @default(now())
+
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id])
+  usuarioId   Int
 }
