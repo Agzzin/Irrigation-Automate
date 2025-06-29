@@ -16,6 +16,7 @@ model Usuario {
 
   bombas   Bomba[]
   leituras Leitura[]
+  passwordResetTokens PasswordResetToken[]
 }
 
 model Bomba {
@@ -34,4 +35,14 @@ model Leitura {
 
   usuario     Usuario  @relation(fields: [usuarioId], references: [id])
   usuarioId   Int
+}
+
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  expiresAt DateTime
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
+  usuarioId Int
+
+  createdAt DateTime @default(now())
 }
