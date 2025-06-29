@@ -17,83 +17,16 @@ import {StackNavigationProp} from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {RootStackParamList} from '../types/RootStackParamList';
 import { useAuth } from '../contexts/AuthContext';
+import FloatingLabelInput from '../components/FloatingLabelInput';
 
 type EmailLoginScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
   'InitialPage'
 >;
 
-type FloatingLabelInputProps = {
-  label: string;
-  value: string;
-  onChangeText: (text: string) => void;
-  secureTextEntry?: boolean;
-  keyboardType?: KeyboardTypeOptions;
-  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
-  placeholderTextColor?: string;
-  [key: string]: any;
-};
-
 const API_BASE_URL = 'https://11c9-200-106-218-64.ngrok-free.app';
 
 const LOGIN_URL = `${API_BASE_URL}/login`;
-
-const FloatingLabelInput: React.FC<FloatingLabelInputProps> = ({
-  label,
-  value,
-  onChangeText,
-  secureTextEntry = false,
-  keyboardType = 'default',
-  autoCapitalize = 'sentences',
-  placeholderTextColor = '#aaa',
-  ...props
-}) => {
-  const [isFocused, setIsFocused] = useState(false);
-  const animatedIsFocused = useRef(new Animated.Value(value ? 1 : 0)).current;
-
-  useEffect(() => {
-    Animated.timing(animatedIsFocused, {
-      toValue: isFocused || value ? 1 : 0,
-      duration: 200,
-      useNativeDriver: false,
-    }).start();
-  }, [isFocused, value]);
-
-  const labelStyle = {
-    position: 'absolute' as const,
-    left: 30,
-    top: animatedIsFocused.interpolate({
-      inputRange: [0, 1],
-      outputRange: [18, -10],
-    }),
-    fontSize: animatedIsFocused.interpolate({
-      inputRange: [0, 1],
-      outputRange: [18, 14],
-    }),
-    color: isFocused ? '#00CB21' : placeholderTextColor,
-    backgroundColor: '#000',
-    paddingHorizontal: 4,
-    zIndex: 2,
-  };
-
-  return (
-    <View style={{marginBottom: 24, marginHorizontal: 24, paddingTop: 8}}>
-      <Animated.Text style={labelStyle}>{label}</Animated.Text>
-      <TextInput
-        style={styles.input}
-        value={value}
-        onChangeText={onChangeText}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
-        secureTextEntry={secureTextEntry}
-        keyboardType={keyboardType}
-        autoCapitalize={autoCapitalize}
-        placeholderTextColor={placeholderTextColor}
-        {...props}
-      />
-    </View>
-  );
-};
 
 const EmailLoginScreen: React.FC = () => {
   const navigation = useNavigation<EmailLoginScreenNavigationProp>();
