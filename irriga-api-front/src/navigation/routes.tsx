@@ -12,7 +12,8 @@ import SettingsScreen from '../screens/SettingsScreen';
 import SmsScreen from '../screens/oAuthSmsScreen';
 import BottomTabs from './BottomTabs';
 import SmsConfirmScreen from '../screens/oAuthSmsConfScreen'
-import ResetPassword from '../screens/ResetPassword';
+import ResetPasswordPage from '../screens/ResetPassword';
+import EnterNewPasswordPage from '../screens/EnterNewPassword'
 
 const Stack = createNativeStackNavigator();
 
@@ -23,9 +24,10 @@ const Routes = () => {
 
   return (
     <Stack.Navigator
-      initialRouteName="ResetPassword"
+      initialRouteName="EnterPassword"
       screenOptions={{headerShown: false}}>
-      <Stack.Screen name='ResetPassword' component={ResetPassword}/>
+      <Stack.Screen name='EnterPassword' component={EnterNewPasswordPage}/>
+      <Stack.Screen name='ResetPassword' component={ResetPasswordPage}/>
       <Stack.Screen name="BottomTabs" component={BottomTabs} />
       <Stack.Screen name="WelcomeScreen" component={WelcomeScreen} />
       <Stack.Screen name="EmailLoginScreen" component={EmailLoginScreen} />

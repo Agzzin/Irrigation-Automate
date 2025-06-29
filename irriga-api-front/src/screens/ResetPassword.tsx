@@ -6,13 +6,11 @@ const ResetPassword = () => {
   const [email, setEmail] = useState('');
 
   const handleResetPassword = () => {
-    // Lógica para enviar email de redefinição de senha
     console.log('Solicitação de redefinição enviada para:', email);
   };
 
   return (
     <View style={styles.container}>
-      {/* Ícone ou imagem principal */}
       <View style={styles.imageContainer}>
         <Image
           source={require('../../assets/icons/mulherIcon.png')}
@@ -20,7 +18,6 @@ const ResetPassword = () => {
         />
       </View>
 
-      {/* Conteúdo principal */}
       <View style={styles.contentContainer}>
         <Text style={styles.title}>Redefina sua senha</Text>
         <Text style={styles.description}>
@@ -40,7 +37,6 @@ const ResetPassword = () => {
           />
         </View>
 
-        {/* Botão de envio (simples para fins de exemplo) */}
         <TouchableOpacity style={styles.button} onPress={handleResetPassword}>
           <Text style={styles.buttonText}>Enviar</Text>
         </TouchableOpacity>
