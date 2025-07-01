@@ -5,6 +5,7 @@ declare global {
   namespace Express {
     interface Request {
       userId?: number;
+      tenantId?: number;
     }
   }
 }
@@ -21,9 +22,11 @@ export const auth: RequestHandler = (req, res, next) => {
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload & {
       userId: number;
+      tenantId: number;
     };
 
     req.userId = payload.userId;
+    req.tenantId = payload.tenantId;
     next();
   } catch {
     res.status(401).json({ msg: 'Token inválido' });

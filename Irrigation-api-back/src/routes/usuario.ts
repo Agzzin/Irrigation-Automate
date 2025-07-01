@@ -5,17 +5,17 @@ import { prisma } from '../prismaClient';
 
 interface TokenPayload {
   userId: number;
+  tenantId: number;
 }
 
 const router = Router();
 
-
 router.post('/signup', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { nome, email, senha } = req.body;
+    const { nome, email, senha, tenantId } = req.body;
 
-    if (!nome || !email || !senha) {
-      res.status(400).json({ message: 'Nome, email e senha são obrigatórios' });
+    if (!nome || !email || !senha || !tenantId) {
+      res.status(400).json({ message: 'Nome, email, senha e tenantId são obrigatórios' });
       return;
     }
     if (senha.length < 6) {
@@ -29,14 +29,20 @@ router.post('/signup', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+    if (!tenant) {
+      res.status(400).json({ message: 'Tenant não encontrado' });
+      return;
+    }
+
     const senhaHash = await bcrypt.hash(senha, 10);
     const usuario = await prisma.usuario.create({
-      data: { nome, email, senha: senhaHash },
+      data: { nome, email, senha: senhaHash, tenantId },
     });
 
     res.status(201).json({
       message: 'Usuário criado com sucesso',
-      data: { id: usuario.id, nome: usuario.nome, email: usuario.email },
+      data: { id: usuario.id, nome: usuario.nome, email: usuario.email, tenantId: usuario.tenantId },
     });
   } catch (error) {
     console.error('Erro interno no signup:', error);
@@ -65,13 +71,13 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const token = jwt.sign({ userId: user.id } as TokenPayload, secret, {
+    const token = jwt.sign({ userId: user.id, tenantId: user.tenantId } as TokenPayload, secret, {
       expiresIn: '2h',
     });
 
     res.json({
       token,
-      usuario: { id: user.id, nome: user.nome, email: user.email },
+      usuario: { id: user.id, nome: user.nome, email: user.email, tenantId: user.tenantId },
     });
   } catch (error) {
     console.error('Erro interno no login:', error);

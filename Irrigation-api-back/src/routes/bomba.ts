@@ -6,14 +6,18 @@ const router = Router();
 
 router.get('/', auth, async (req: Request, res: Response): Promise<void> => {
   const userId = req.userId;
-  if (!userId) {
+  const tenantId = req.tenantId;
+  if (!userId || !tenantId) {
     res.status(401).json({ msg: 'Usuário não autenticado' });
     return;
   }
 
   try {
     const bombas = await prisma.bomba.findMany({
-      where: { usuarioId: userId },
+      where: {
+        usuarioId: userId,
+        usuario: { tenantId }
+      },
       orderBy: { id: 'desc' },
     });
     res.json(bombas);
@@ -53,18 +57,19 @@ router.post('/', auth, async (req: Request, res: Response): Promise<void> => {
 
 router.put('/:id', auth, async (req: Request, res: Response): Promise<void> => {
   const userId = req.userId;
+  const tenantId = req.tenantId;
   const bombaId = Number(req.params.id);
   const { nome, ativo } = req.body;
 
-  if (!userId) {
+  if (!userId || !tenantId) {
     res.status(401).json({ msg: 'Usuário não autenticado' });
     return;
   }
 
   try {
-    const bomba = await prisma.bomba.findUnique({ where: { id: bombaId } });
+    const bomba = await prisma.bomba.findFirst({ where: { id: bombaId, usuarioId: userId, usuario: { tenantId } } });
 
-    if (!bomba || bomba.usuarioId !== userId) {
+    if (!bomba) {
       res.status(404).json({ msg: 'Bomba não encontrada ou sem permissão' });
       return;
     }
@@ -83,27 +88,27 @@ router.put('/:id', auth, async (req: Request, res: Response): Promise<void> => {
 
 router.delete('/:id', auth, async (req: Request, res: Response): Promise<void> => {
   const userId = req.userId;
+  const tenantId = req.tenantId;
   const bombaId = Number(req.params.id);
 
-  if (!userId) {
+  if (!userId || !tenantId) {
     res.status(401).json({ msg: 'Usuário não autenticado' });
     return;
   }
 
   try {
-    const bomba = await prisma.bomba.findUnique({ where: { id: bombaId } });
+    const bomba = await prisma.bomba.findFirst({ where: { id: bombaId, usuarioId: userId, usuario: { tenantId } } });
 
-    if (!bomba || bomba.usuarioId !== userId) {
+    if (!bomba) {
       res.status(404).json({ msg: 'Bomba não encontrada ou sem permissão' });
       return;
     }
 
     await prisma.bomba.delete({ where: { id: bombaId } });
-
-    res.status(204).send();
+    res.json({ msg: 'Bomba removida com sucesso' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ msg: 'Erro ao deletar bomba' });
+    res.status(500).json({ msg: 'Erro ao remover bomba' });
   }
 });
 

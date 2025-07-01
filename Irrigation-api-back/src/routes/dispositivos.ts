@@ -7,8 +7,15 @@ const router = Router();
 router.get('/', auth, async (req, res) => {
   try {
     const dispositivos = await prisma.dispositivo.findMany({
-      where: { userId: req.userId }
-    });
+  where: {
+    usuarioId: req.userId,
+    usuario: {
+      is: {
+        tenantId: req.tenantId
+      }
+    }
+  }
+});
     res.json(dispositivos);
   } catch (err) {
     res.status(500).json({ msg: 'Erro ao buscar dispositivos' });
@@ -20,7 +27,7 @@ router.post('/', auth, async (req, res) => {
     const novo = await prisma.dispositivo.create({
       data: {
         ...req.body,
-        userId: req.userId
+        usuarioId: req.userId
       }
     });
     res.status(201).json(novo);
