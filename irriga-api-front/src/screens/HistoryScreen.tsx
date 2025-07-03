@@ -368,7 +368,7 @@ const HistoryScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {flex: 1, backgroundColor: '#fff', padding: 16},
+  container: {flex: 1, backgroundColor: '#000000', padding: 16},
   center: {justifyContent: 'center', alignItems: 'center'},
   header: {
     flexDirection: 'row',

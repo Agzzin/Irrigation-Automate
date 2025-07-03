@@ -139,7 +139,6 @@ const InitialPageScreen = () => {
 
       setBombaLigada(data.ligada);
 
-      // Atualiza Zona 1
       setZonasStatus(prev => {
         const updated = [...prev];
         updated[0].ligada = data.ligada;
@@ -151,7 +150,6 @@ const InitialPageScreen = () => {
     }
   }, []);
 
-  // Check conexão
   const checkConexao = useCallback(async () => {
     try {
       const response = await fetch('http://192.168.0.100/ping');
@@ -161,7 +159,6 @@ const InitialPageScreen = () => {
     }
   }, []);
 
-  // Atualização periódica
   useEffect(() => {
     fetchSensorData();
     fetchEstadoBomba();
@@ -174,12 +171,10 @@ const InitialPageScreen = () => {
     return () => clearInterval(interval);
   }, [fetchSensorData, fetchEstadoBomba, checkConexao]);
 
-  // Automação da irrigação
   useEffect(() => {
     const automatizarIrrigacao = async () => {
-      if (!switchIrrigationMode) return; // modo manual
+      if (!switchIrrigationMode) return; 
 
-      // Espera dados prontos
       if (
         soilMoisture === null ||
         weather === '' ||
@@ -187,17 +182,14 @@ const InitialPageScreen = () => {
         loadingBomba
       )
         return;
-
-      // Verifica se está online para enviar comando
       if (!isOnline) return;
 
-      // Pausar se chover
       if (
         switchPauseRain &&
         weather.toLowerCase().includes('chuva') &&
         bombaLigada
       ) {
-        await toggleBomba(false); // Desliga a bomba
+        await toggleBomba(false);
         if (switchNotifications)
           Alert.alert('Automação', 'Irrigação pausada por causa da chuva.');
         return;
@@ -347,8 +339,6 @@ const InitialPageScreen = () => {
           </View>
         </View>
       </View>
-
-      {/* Mensagem de erro sensores */}
       {sensorError && (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{sensorError}</Text>
@@ -477,7 +467,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
-    paddingTop: 40,
+    paddingTop: 5,
     paddingBottom: 10,
     paddingHorizontal: 20,
     marginTop: 20,
@@ -636,12 +626,14 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     paddingHorizontal: 75,
     borderRadius: 10,
+    width:'95%',
     gap: 10,
   },
   manualText: {
     color: '#fff',
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: 'bold',
+    flexDirection:'row',
   },
   zonaRow: {
     flexDirection: 'row',

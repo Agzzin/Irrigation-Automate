@@ -1,22 +1,28 @@
 import React, { useState } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import FloatingLabelInput from '../components/FloatingLabelInput';
 
 const EnterNewPassword = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleResetPassword = () => {
+  const handleResetPassword = async () => {
+    setLoading(true);
     if (password.length < 8) {
       setError('A senha deve ter no mínimo 8 caracteres.');
+      setLoading(false);
       return;
     }
     if (password !== confirmPassword) {
       setError('As senhas não correspondem.');
+      setLoading(false);
       return;
     }
     setError('');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    setLoading(false);
     Alert.alert('Sucesso', 'Senha redefinida com sucesso!');
   };
 
@@ -62,8 +68,12 @@ const EnterNewPassword = () => {
         <Text style={{color:'#fff'}}>Ambas as senhas devem corresponder</Text>
         {error ? <Text style={{color: 'red', marginTop: 10}}>{error}</Text> : null}
 
-        <TouchableOpacity style={styles.button} onPress={handleResetPassword}>
-          <Text style={styles.buttonText}>Resetar senha</Text>
+        <TouchableOpacity style={styles.button} onPress={handleResetPassword} disabled={loading}>
+          {loading ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Resetar senha</Text>
+          )}
         </TouchableOpacity>
       </View>
     </View>

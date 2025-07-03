@@ -30,19 +30,13 @@ const FloatingLabelInput: React.FC<FloatingLabelInputProps> = ({
 
   const labelStyle = {
     position: 'absolute' as const,
-    left: 0,
-    top: animatedIsFocused.interpolate({
-      inputRange: [0, 1],
-      outputRange: [18, 0],
-    }),
-    fontSize: animatedIsFocused.interpolate({
-      inputRange: [0, 1],
-      outputRange: [16, 12],
-    }),
-    color: animatedIsFocused.interpolate({
-      inputRange: [0, 1],
-      outputRange: ['#888', '#00CB21'],
-    }),
+    left: 30,
+    top: animatedIsFocused.interpolate({ inputRange: [0, 1], outputRange: [18, -10] }),
+    fontSize: animatedIsFocused.interpolate({ inputRange: [0, 1], outputRange: [14, 12] }),
+    color: isFocused ? '#00CB21' : rest.placeholderTextColor || '#fff',
+    backgroundColor: '#000',
+    paddingHorizontal: 4,
+    zIndex: 2,
   };
 
   const borderColor = animatedIsFocused.interpolate({

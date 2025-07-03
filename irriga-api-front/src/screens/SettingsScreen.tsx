@@ -191,14 +191,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
+    width:'100%'
   },
   sectionTitle: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 20,
   },
   subSectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     marginTop: 15,
   },

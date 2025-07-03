@@ -24,7 +24,7 @@ import EnvelopeIcon from '../../assets/icons/envelope.svg';
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/RootStackParamList';
-
+import { AuthToken } from '../services/auth';
 
 interface UserProfile {
   id: string;
@@ -61,6 +61,23 @@ const WelcomeScreen = () => {
   );
   const [loading, setLoading] = useState<boolean>(false);
   const [loading1, setLoading1] = useState<boolean>(false);
+
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
+  useEffect(() => {
+    Settings.initializeSDK();
+    configureGoogleSignIn();
+    checkCurrentFacebookAccessToken();
+
+    AuthToken.get().then(token => {
+      if (token) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'BottomTabs' }],
+        });
+      }
+    });
+  }, []);
 
   const handleBotao = async () => {
     setLoading(true);
@@ -190,14 +207,6 @@ const WelcomeScreen = () => {
     new GraphRequestManager().addRequest(infoRequest).start();
   };
 
-  useEffect(() => {
-    Settings.initializeSDK();
-    configureGoogleSignIn();
-    checkCurrentFacebookAccessToken();
-  }, []);
-
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-
   return (
     <View style={styles.container}>
       <View style={styles.view1}>
@@ -293,21 +302,21 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    fontSize: 16,
+    fontSize: 14,
     color: 'gray',
     fontWeight: 'bold',
     marginTop: 20,
     textAlign: 'center',
   },
   description: {
-    fontSize: 16,
+    fontSize: 12,
     color: 'gray',
     marginTop: 10,
     textAlign: 'center',
   },
 
   logo: {
-    marginTop: 60,
+    marginTop: 40,
     width: 200,
     height: 200,
   },
@@ -316,7 +325,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#00CB21',
     padding: 15,
     borderRadius: 50,
-    marginTop: 20,
     alignItems: 'center',
     justifyContent: 'center',
     marginHorizontal: 24,
@@ -325,7 +333,7 @@ const styles = StyleSheet.create({
   },
 
   subscribeText: {
-    fontSize: 18,
+    fontSize: 16,
     color: '#ffffff',
     fontWeight: 'bold',
     textAlign: 'center',

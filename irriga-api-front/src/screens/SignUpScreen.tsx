@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, {useState, useRef} from 'react';
 import {
   View,
   Text,
@@ -12,78 +12,17 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../types/RootStackParamList';
-import { useAuth } from '../contexts/AuthContext'; 
+import {useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {RootStackParamList} from '../types/RootStackParamList';
+import {useAuth} from '../contexts/AuthContext';
+import FloatingLabelInput from '../components/FloatingLabelInput';
 
 type SignUpNav = NativeStackNavigationProp<RootStackParamList, 'InitialPage'>;
 
-type FloatingLabelInputProps = {
-  label: string;
-  value: string;
-  onChangeText: (text: string) => void;
-  secureTextEntry?: boolean;
-  keyboardType?: KeyboardTypeOptions;
-  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
-  placeholderTextColor?: string;
-  [key: string]: any;
-};
-
-const FloatingLabelInput: React.FC<FloatingLabelInputProps> = ({
-  label,
-  value,
-  onChangeText,
-  secureTextEntry = false,
-  keyboardType = 'default',
-  autoCapitalize = 'sentences',
-  placeholderTextColor = '#aaa',
-  ...props
-}) => {
-  const [isFocused, setIsFocused] = useState(false);
-  const animated = useRef(new Animated.Value(value ? 1 : 0)).current;
-
-  React.useEffect(() => {
-    Animated.timing(animated, {
-      toValue: isFocused || value ? 1 : 0,
-      duration: 200,
-      useNativeDriver: false,
-    }).start();
-  }, [isFocused, value]);
-
-  const labelStyle = {
-    position: 'absolute' as const,
-    left: 30,
-    top: animated.interpolate({ inputRange: [0, 1], outputRange: [18, -10] }),
-    fontSize: animated.interpolate({ inputRange: [0, 1], outputRange: [14, 12] }),
-    color: isFocused ? '#00CB21' : placeholderTextColor,
-    backgroundColor: '#000',
-    paddingHorizontal: 4,
-    zIndex: 2,
-  };
-
-  return (
-    <View style={{ marginBottom: 24, marginHorizontal: 24, paddingTop: 8 }}>
-      <Animated.Text style={labelStyle}>{label}</Animated.Text>
-      <TextInput
-        style={styles.input}
-        value={value}
-        onChangeText={onChangeText}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
-        secureTextEntry={secureTextEntry}
-        keyboardType={keyboardType}
-        autoCapitalize={autoCapitalize}
-        placeholderTextColor={placeholderTextColor}
-        {...props}
-      />
-    </View>
-  );
-};
-
 const SignUpScreen: React.FC = () => {
   const navigation = useNavigation<SignUpNav>();
-  const { login } = useAuth(); // <-- pega login do contexto
+  const {login} = useAuth();
 
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
@@ -99,33 +38,36 @@ const SignUpScreen: React.FC = () => {
 
     setLoading(true);
     try {
-      // 1) Chama endpoint de signup
-      const response = await fetch('https://11c9-200-106-218-64.ngrok-free.app/usuarios/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nome, email, senha }),
-      });
+      const response = await fetch(
+        'https://8b4e-200-106-218-64.ngrok-free.app/usuarios/signup',
+        {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({nome, email, senha}),
+        },
+      );
 
       if (!response.ok) {
-        const { message } = await response.json();
+        const {message} = await response.json();
         throw new Error(message || 'Erro ao cadastrar');
       }
 
-      // 2) Após sucesso, faz login automático
-      const loginResponse = await fetch('https://11c9-200-106-218-64.ngrok-free.app/usuarios/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, senha }),
-      });
+      const loginResponse = await fetch(
+        'https://c715-200-106-218-64.ngrok-free.app/usuarios/login',
+        {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({email, senha}),
+        },
+      );
 
       if (!loginResponse.ok) {
-        const { message } = await loginResponse.json();
+        const {message} = await loginResponse.json();
         throw new Error(message || 'Erro no login após cadastro');
       }
 
       const loginData = await loginResponse.json();
 
-      // 3) Usa o login do contexto para salvar token e usuário
       await login(loginData.token, loginData.usuario);
 
       Alert.alert('Sucesso!', 'Conta criada e login realizado com sucesso.');
@@ -140,49 +82,59 @@ const SignUpScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <View style={styles.logoContainer}>
-        <Image source={require('../../assets/icons/bola-verde.png')} style={styles.logo} />
+        <Image
+          source={require('../../assets/icons/bola-verde.png')}
+          style={styles.logo}
+        />
         <View style={styles.titleContainer}>
           <Text style={styles.title}>Hello,</Text>
           <Text style={styles.subtitle}>SignUp!</Text>
         </View>
       </View>
 
-      <FloatingLabelInput
-        label="NOME"
-        value={nome}
-        onChangeText={setNome}
-        keyboardType="default"
-        autoCapitalize="words"
-        placeholderTextColor="#fff"
-      />
-      <FloatingLabelInput
-        label="EMAIL"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        placeholderTextColor="#fff"
-      />
-      <FloatingLabelInput
-        label="SENHA"
-        value={senha}
-        onChangeText={setSenha}
-        secureTextEntry
-        autoCapitalize="none"
-        placeholderTextColor="#fff"
-      />
+      <View style={{alignItems: 'center', width: '100%'}}>
+        <FloatingLabelInput
+          label="NOME"
+          value={nome}
+          onChangeText={setNome}
+          keyboardType="default"
+          autoCapitalize="words"
+          placeholderTextColor="#fff"
+          style={[styles.input, {width: '90%'}]}
+        />
+        <FloatingLabelInput
+          label="EMAIL"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          placeholderTextColor="#fff"
+          style={[styles.input, {width: '90%'}]}
+        />
+        <FloatingLabelInput
+          label="SENHA"
+          value={senha}
+          onChangeText={setSenha}
+          secureTextEntry
+          autoCapitalize="none"
+          placeholderTextColor="#fff"
+          style={[styles.input, {width: '90%'}]}
+        />
+      </View>
 
       <View style={styles.optionsRow}>
         <View style={styles.rememberMe}>
           <Switch
             value={rememberMe}
             onValueChange={setRememberMe}
-            trackColor={{ false: '#767577', true: '#00CB21' }}
+            trackColor={{false: '#767577', true: '#00CB21'}}
             thumbColor={rememberMe ? '#fff' : '#f4f3f4'}
             ios_backgroundColor="#3e3e3e"
-            style={{ transform: [{ scaleX: 1.0 }, { scaleY: 0.8 }] }}
+            style={{transform: [{scaleX: 1.0}, {scaleY: 0.8}]}}
           />
-          <Text style={styles.rememberMeText}>Eu aceito os termos {'\n'}e condições do app</Text>
+          <Text style={styles.rememberMeText}>
+            Eu aceito os termos {'\n'}e condições do app
+          </Text>
         </View>
 
         <TouchableOpacity>
@@ -191,11 +143,14 @@ const SignUpScreen: React.FC = () => {
       </View>
 
       <TouchableOpacity
-        style={[styles.buttonEntrar, loading && { opacity: 0.6 }]}
+        style={[styles.buttonEntrar, loading && {opacity: 0.6}]}
         onPress={handleSignUp}
-        disabled={loading}
-      >
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Cadastrar</Text>}
+        disabled={loading}>
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Cadastrar</Text>
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -220,13 +175,13 @@ const styles = StyleSheet.create({
     left: -70,
   },
   logo: {
-    width: 410,
-    height: 400,
+    width: 400,
+    height: 380,
     marginBottom: 20,
   },
   title: {
     color: '#FFFFFF',
-    fontSize: 35,
+    fontSize: 30,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 0,
@@ -234,20 +189,22 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     color: '#ffffff',
-    fontSize: 70,
+    fontSize: 60,
     fontWeight: 'bold',
     textAlign: 'center',
     marginTop: 0,
   },
   input: {
-    backgroundColor: '#000',
-    color: '#fff',
+    width: '90%',
+    backgroundColor: '#fff',
+    color: '#000',
     paddingHorizontal: 20,
     paddingVertical: 14,
     fontSize: 18,
-    borderWidth: 0,
     borderRadius: 8,
+    marginBottom: 16,
   },
+
   optionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

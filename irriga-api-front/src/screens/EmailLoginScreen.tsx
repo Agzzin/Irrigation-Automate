@@ -24,7 +24,7 @@ type EmailLoginScreenNavigationProp = StackNavigationProp<
   'InitialPage'
 >;
 
-const API_BASE_URL = 'https://11c9-200-106-218-64.ngrok-free.app';
+const API_BASE_URL = 'https://c715-200-106-218-64.ngrok-free.app';
 
 const LOGIN_URL = `${API_BASE_URL}/login`;
 
@@ -66,7 +66,6 @@ const EmailLoginScreen: React.FC = () => {
 
     const { token, usuario } = JSON.parse(raw);
 
-    // Armazena token + usuário no contexto + AsyncStorage
     await login(token, usuario);
 
     console.log('Usuário autenticado:', usuario);

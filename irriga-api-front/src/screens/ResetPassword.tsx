@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import FloatingLabelInput from '../components/FloatingLabelInput';
 
 const ResetPassword = () => {
   const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleResetPassword = () => {
+  const handleResetPassword = async () => {
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    setLoading(false);
     console.log('Solicitação de redefinição enviada para:', email);
   };
 
@@ -37,8 +41,12 @@ const ResetPassword = () => {
           />
         </View>
 
-        <TouchableOpacity style={styles.button} onPress={handleResetPassword}>
-          <Text style={styles.buttonText}>Enviar</Text>
+        <TouchableOpacity style={styles.button} onPress={handleResetPassword} disabled={loading}>
+          {loading ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Enviar</Text>
+          )}
         </TouchableOpacity>
       </View>
     </View>
