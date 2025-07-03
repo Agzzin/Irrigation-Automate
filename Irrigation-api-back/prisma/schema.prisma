@@ -14,14 +14,15 @@ model Tenant {
 }
 
 model Usuario {
-  id       Int     @id @default(autoincrement())
-  nome     String  @db.VarChar(100)
-  email    String  @unique @db.VarChar(100)
-  telefone String? @db.VarChar(20)
-  senha    String  @db.VarChar(255)
-  tenantId Int
-  tenant   Tenant   @relation(fields: [tenantId], references: [id])
-
+  id         Int      @id @default(autoincrement())
+  nome       String   @db.VarChar(100)
+  email      String   @unique @db.VarChar(100)
+  googleId   String?  @unique
+  facebookId String?  @unique
+  telefone   String?  @db.VarChar(20)
+  senha      String?  @db.VarChar(255)
+  tenantId   Int?                     
+  tenant     Tenant?  @relation(fields: [tenantId], references: [id])
   bombas              Bomba[]
   leituras            Leitura[]
   passwordResetTokens PasswordResetToken[]

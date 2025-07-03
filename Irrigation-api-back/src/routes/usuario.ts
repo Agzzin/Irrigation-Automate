@@ -8,6 +8,14 @@ interface TokenPayload {
   tenantId: number;
 }
 
+export interface Usuario {
+  id: string;
+  nome: string;
+  email: string;
+  googleId?: string;
+  facebookId?: string;
+}
+
 const router = Router();
 
 router.post('/signup', async (req: Request, res: Response): Promise<void> => {
@@ -58,11 +66,11 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const user = await prisma.usuario.findUnique({ where: { email } });
-    if (!user || !(await bcrypt.compare(senha, user.senha))) {
+     const user = await prisma.usuario.findUnique({ where: { email } });
+      if (!user || !user.senha || !(await bcrypt.compare(senha, user.senha))) {
       res.status(401).json({ message: 'Credenciais inválidas' });
       return;
-    }
+  }
 
     const secret = process.env.JWT_SECRET;
     if (!secret) {
