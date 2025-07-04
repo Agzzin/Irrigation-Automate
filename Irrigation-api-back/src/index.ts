@@ -5,6 +5,7 @@ import { PrismaClient } from '@prisma/client';
 import bombaRouter from './routes/bomba';
 import usuarioRouter from './routes/usuario';
 import authResetRoutes from '../src/middlewares/reset-password';
+import { authRoutes } from './middlewares/auth'
 
 const app = express();
 const prisma = new PrismaClient();
@@ -12,6 +13,7 @@ const prisma = new PrismaClient();
 app.use(cors());
 app.use(express.json());
 
+app.use('/auth', authRoutes);
 app.use('/auth', authResetRoutes);
 app.use('/bombas', bombaRouter);         
 app.use('/usuarios', usuarioRouter);      

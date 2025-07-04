@@ -10,7 +10,7 @@ declare global {
   }
 }
 
-export const auth: RequestHandler = (req, res, next) => {
+export const authRoutes: RequestHandler = (req, res, next) => {
   const header = req.headers.authorization;
   const token = header?.startsWith('Bearer ') ? header.split(' ')[1] : undefined;
 
