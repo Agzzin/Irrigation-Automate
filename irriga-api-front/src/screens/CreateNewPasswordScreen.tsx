@@ -5,12 +5,16 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation} from '@react-navigation/native';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {RootStackParamList} from '../types/RootStackParamList';
 
 const CreateNewPasswordScreen = () => {
-  const navigation = useNavigation();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -18,17 +22,27 @@ const CreateNewPasswordScreen = () => {
   const [showConfirm, setShowConfirm] = useState(false);
 
   const handleResetPassword = () => {
-    if (password.length >= 8 && password === confirmPassword) {
-      console.log('Senha redefinida:', password);
-    } else {
+    if (password.length < 8) {
+      Alert.alert('Erro', 'A senha deve ter pelo menos 8 caracteres.');
+      return;
     }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Erro', 'As senhas não coincidem.');
+      return;
+    }
+
+    console.log('Senha redefinida com sucesso:', password);
+    Alert.alert('Sucesso', 'Sua senha foi redefinida com sucesso!');
+    navigation.navigate('InitialPage');
   };
 
   return (
     <View style={styles.container}>
       <TouchableOpacity onPress={() => navigation.goBack()}>
-        <Ionicons name="chevron-back" size={24} color="black" />
+        <Ionicons name="chevron-back" size={24} color="#fff" />
       </TouchableOpacity>
+
       <Text style={styles.title}>Criar nova senha</Text>
       <Text style={styles.description}>
         Digite e confirme sua nova senha para redefinir o acesso.
@@ -37,7 +51,7 @@ const CreateNewPasswordScreen = () => {
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
-          placeholder="Password"
+          placeholder="Nova senha"
           placeholderTextColor="#fff"
           secureTextEntry={!showPassword}
           value={password}
@@ -58,7 +72,7 @@ const CreateNewPasswordScreen = () => {
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
-          placeholder="Confirm Password"
+          placeholder="Confirmar senha"
           placeholderTextColor="#fff"
           secureTextEntry={!showConfirm}
           value={confirmPassword}
@@ -74,7 +88,7 @@ const CreateNewPasswordScreen = () => {
           />
         </TouchableOpacity>
       </View>
-      <Text style={styles.hint}>Ambas as senhas devem ser iguais.</Text>
+      <Text style={styles.hint}>As senhas devem ser iguais.</Text>
 
       <TouchableOpacity style={styles.button} onPress={handleResetPassword}>
         <Text style={styles.buttonText}>Redefinir senha</Text>
@@ -115,6 +129,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingRight: 44,
+    color: '#fff',
   },
   eyeButton: {
     position: 'absolute',

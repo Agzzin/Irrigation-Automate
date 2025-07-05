@@ -1,27 +1,57 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   TextInput,
   StyleSheet,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
-import {useNavigation} from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { RootStackParamList } from '../types/RootStackParamList';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-
 const ResetPasswordScreen = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const [email, setEmail] = React.useState('');
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSendInstructions = () => {
-    if (email.trim().length > 0) {
-      console.log('Send instructions to:', email);
-      navigation.navigate('CheckEmail');
-    } else {
-      console.log('Por favor, preencha o e-mail.');
+  const handleSendInstructions = async () => {
+    if (email.trim().length === 0) {
+      Alert.alert('Erro', 'Por favor, preencha o e-mail.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(
+        'http://localhost:3000/redefinir-senha',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        Alert.alert('Sucesso', data.message || 'Verifique seu e-mail.');
+        navigation.navigate('CheckEmail');
+      } else {
+        Alert.alert('Erro', data.message || 'Ocorreu um erro ao enviar o e-mail.');
+      }
+    } catch (error) {
+      console.error('Erro ao solicitar recuperação de senha:', error);
+      Alert.alert(
+        'Erro',
+        'Não foi possível se conectar ao servidor. Tente novamente mais tarde.'
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -53,8 +83,14 @@ const ResetPasswordScreen = () => {
         autoCapitalize="none"
       />
 
-      <TouchableOpacity style={styles.button} onPress={handleSendInstructions}>
-        <Text style={styles.buttonText}>Enviar instruções</Text>
+      <TouchableOpacity
+        style={[styles.button, loading && { opacity: 0.6 }]}
+        onPress={handleSendInstructions}
+        disabled={loading}
+      >
+        <Text style={styles.buttonText}>
+          {loading ? 'Enviando...' : 'Enviar instruções'}
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -98,7 +134,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
     marginBottom: 24,
-    color:'#fff'
+    color: '#fff',
   },
   button: {
     backgroundColor: '#00CB21',
