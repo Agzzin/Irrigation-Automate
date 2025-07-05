@@ -118,7 +118,7 @@ const EmailLoginScreen: React.FC = () => {
           />
           <Text style={styles.rememberMeText}>Lembrar-me</Text>
         </View>
-        <TouchableOpacity onPress={() => Alert.alert('Em breve')}>
+        <TouchableOpacity onPress={() => navigation.navigate('AccountRecovery')}>
           <Text style={styles.forgotText}>Esqueci a senha?</Text>
         </TouchableOpacity>
       </View>

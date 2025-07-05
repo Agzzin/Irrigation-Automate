@@ -29,9 +29,9 @@ const CreateNewPasswordScreen = () => {
       <TouchableOpacity onPress={() => navigation.goBack()}>
         <Ionicons name="chevron-back" size={24} color="black" />
       </TouchableOpacity>
-      <Text style={styles.title}>Create new password</Text>
+      <Text style={styles.title}>Criar nova senha</Text>
       <Text style={styles.description}>
-        Your new password must be different from previous used passwords.
+        Digite e confirme sua nova senha para redefinir o acesso.
       </Text>
 
       <View style={styles.inputContainer}>
@@ -53,7 +53,7 @@ const CreateNewPasswordScreen = () => {
           />
         </TouchableOpacity>
       </View>
-      <Text style={styles.hint}>Must be at least 8 characters.</Text>
+      <Text style={styles.hint}>Deve ter pelo menos 8 caracteres.</Text>
 
       <View style={styles.inputContainer}>
         <TextInput
@@ -74,10 +74,10 @@ const CreateNewPasswordScreen = () => {
           />
         </TouchableOpacity>
       </View>
-      <Text style={styles.hint}>Both passwords must match.</Text>
+      <Text style={styles.hint}>Ambas as senhas devem ser iguais.</Text>
 
       <TouchableOpacity style={styles.button} onPress={handleResetPassword}>
-        <Text style={styles.buttonText}>Reset Password</Text>
+        <Text style={styles.buttonText}>Redefinir senha</Text>
       </TouchableOpacity>
     </View>
   );
@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '700',
-    color:'#fff',
+    color: '#fff',
     marginTop: 16,
     marginBottom: 8,
   },

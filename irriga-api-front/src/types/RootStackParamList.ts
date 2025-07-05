@@ -9,4 +9,7 @@ export type RootStackParamList = {
   SettingsPage: undefined;
   SmsPage: undefined;
   SmsPageConfirm: undefined;
+  AccountRecovery: undefined;
+  CheckEmail: undefined;
+  
 };

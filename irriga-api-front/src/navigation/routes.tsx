@@ -27,7 +27,7 @@ const Routes = () => {
 
   return (
     <Stack.Navigator
-      initialRouteName="CreateNewPassword"
+      initialRouteName="WelcomeScreen"
       screenOptions={{headerShown: false}}>
       <Stack.Screen name='CreateNewPassword' component={CreateNewPasswordScreen}/>
       <Stack.Screen name='EnterPassword' component={EnterNewPasswordPage}/>

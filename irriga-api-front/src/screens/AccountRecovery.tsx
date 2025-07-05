@@ -1,14 +1,28 @@
 import React from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import Ionicons  from 'react-native-vector-icons/Ionicons';
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  TouchableOpacity,
+} from 'react-native';
+import {useNavigation} from '@react-navigation/native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import { RootStackParamList } from '../types/RootStackParamList';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
 
 const ResetPasswordScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [email, setEmail] = React.useState('');
 
   const handleSendInstructions = () => {
-    console.log('Send instructions to:', email);
+    if (email.trim().length > 0) {
+      console.log('Send instructions to:', email);
+      navigation.navigate('CheckEmail');
+    } else {
+      console.log('Por favor, preencha o e-mail.');
+    }
   };
 
   return (
@@ -22,12 +36,13 @@ const ResetPasswordScreen = () => {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.title}>Reset password</Text>
+      <Text style={styles.title}>Redefinir senha</Text>
       <Text style={styles.description}>
-        Enter the email associated with your account and we’ll send an email with instructions to reset your password.
+        Digite o e-mail associado à sua conta e enviaremos um e-mail com
+        instruções para redefinir sua senha.
       </Text>
 
-      <Text style={styles.label}>Email address</Text>
+      <Text style={styles.label}>Endereço de email</Text>
       <TextInput
         style={styles.input}
         placeholder="you@example.com"
@@ -39,7 +54,7 @@ const ResetPasswordScreen = () => {
       />
 
       <TouchableOpacity style={styles.button} onPress={handleSendInstructions}>
-        <Text style={styles.buttonText}>Send Instructions</Text>
+        <Text style={styles.buttonText}>Enviar instruções</Text>
       </TouchableOpacity>
     </View>
   );
@@ -63,7 +78,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     marginBottom: 12,
-    color:'#fff'
+    color: '#fff',
   },
   description: {
     fontSize: 14,
@@ -74,7 +89,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     marginBottom: 8,
-    color:'#fff'
+    color: '#fff',
   },
   input: {
     height: 48,
@@ -83,9 +98,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
     marginBottom: 24,
+    color:'#fff'
   },
   button: {
-    backgroundColor: '#00CB21', 
+    backgroundColor: '#00CB21',
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: 'center',
