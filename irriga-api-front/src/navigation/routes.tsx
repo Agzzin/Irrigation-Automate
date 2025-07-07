@@ -17,6 +17,7 @@ import EnterNewPasswordPage from '../screens/EnterNewPassword'
 import AccounRecoveryScreen from '../screens/AccountRecovery';
 import CheckEmailScreen from '../screens/CheckEmailScreen';
 import CreateNewPasswordScreen from '../screens/CreateNewPasswordScreen';
+import PersonalizedSchedulesScreen from '../screens/PersonalizedSchedulesScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -27,9 +28,10 @@ const Routes = () => {
 
   return (
     <Stack.Navigator
-      initialRouteName="WelcomeScreen"
+      initialRouteName="PersonalizedSchedules"
       screenOptions={{headerShown: false}}>
       <Stack.Screen name='CreateNewPassword' component={CreateNewPasswordScreen}/>
+      <Stack.Screen name='PersonalizedSchedules' component={PersonalizedSchedulesScreen}/>
       <Stack.Screen name='EnterPassword' component={EnterNewPasswordPage}/>
       <Stack.Screen name='CheckEmail' component={CheckEmailScreen}/>
       <Stack.Screen name='AccountRecovery' component={AccounRecoveryScreen}/>
