@@ -8,7 +8,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import  Ionicons  from 'react-native-vector-icons/Ionicons';
-import ScheduleModal from './ScheduleModal';
+import ScheduleModal from './ScheduleModal.tsx';
 
 type Schedule = {
   id: string;
