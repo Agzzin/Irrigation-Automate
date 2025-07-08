@@ -93,7 +93,7 @@ export default function PersonalizedSchedulesScreen() {
           setModalVisible(true);
         }}
       >
-        <Ionicons name="add" size={20} color="#000" />
+        <Ionicons name="add" size={20} color="#fff" />
         <Text style={styles.addButtonText}>Adicionar Novo Horário</Text>
       </TouchableOpacity>
 
@@ -111,14 +111,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+    justifyContent:'center'
   },
   title: {
-    backgroundColor: '#00CB21',
-    color: '#fff',
+    color: '#000',
     fontSize: 20,
     fontWeight: '600',
     textAlign: 'center',
     paddingVertical: 16,
+    marginTop:10,
   },
   list: {
     padding: 16,
@@ -154,11 +155,20 @@ const styles = StyleSheet.create({
     borderColor: '#DDD',
     padding: 16,
     justifyContent: 'center',
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#00CB21',
+    width: '90%',
+    alignSelf: 'center',
+    borderRadius: 50,
+    position: 'absolute', 
+    bottom: 32, 
+    left: 20,
+    right: 20,
+    elevation: 5, 
   },
   addButtonText: {
     fontSize: 16,
     fontWeight: '500',
     marginLeft: 8,
+    color:'#fff'
   },
 });

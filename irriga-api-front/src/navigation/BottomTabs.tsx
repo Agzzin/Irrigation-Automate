@@ -2,7 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import HomeScreen from '../screens/InitialPageScreen';
 import SettingsScreen from '../screens/SettingsScreen';
-import ProgrammingScreen from '../screens/ProgrammingScreen';
+import ZonesScreen from '../screens/ZonesScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
@@ -17,7 +17,7 @@ export default function BottomTabs() {
           let iconName: string = '';
           if (route.name === 'Inicio') {
             iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Programações') {
+          } else if (route.name === 'Zonas') {
             iconName = focused ? 'list' : 'list-outline';
           } else if (route.name === 'Histórico') {
             iconName = focused ? 'time' : 'time-outline';
@@ -31,7 +31,7 @@ export default function BottomTabs() {
       })}
     >
       <Tab.Screen name="Inicio" component={HomeScreen} />
-      <Tab.Screen name="Programações" component={ProgrammingScreen} />
+      <Tab.Screen name="Zones" component={ZonesScreen} />
       <Tab.Screen name="Histórico" component={HistoryScreen} />
       <Tab.Screen name="Configurações" component={SettingsScreen} />
     </Tab.Navigator>

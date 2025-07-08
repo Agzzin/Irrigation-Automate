@@ -6,7 +6,7 @@ import RNBootSplash from 'react-native-bootsplash';
 import SignUpScreen from '../screens/SignUpScreen';
 import {useEffect} from 'react';
 import InitialPage from '../screens/InitialPageScreen';
-import ProgrammingScreen from '../screens/ProgrammingScreen';
+import ZonesScreen from '../screens/ZonesScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import SmsScreen from '../screens/oAuthSmsScreen';
@@ -28,7 +28,7 @@ const Routes = () => {
 
   return (
     <Stack.Navigator
-      initialRouteName="PersonalizedSchedules"
+      initialRouteName="ZonesPage"
       screenOptions={{headerShown: false}}>
       <Stack.Screen name='CreateNewPassword' component={CreateNewPasswordScreen}/>
       <Stack.Screen name='PersonalizedSchedules' component={PersonalizedSchedulesScreen}/>
@@ -41,7 +41,7 @@ const Routes = () => {
       <Stack.Screen name="EmailLoginScreen" component={EmailLoginScreen} />
       <Stack.Screen name="SignUpScreen" component={SignUpScreen} />
       <Stack.Screen name="InitialPage" component={InitialPage} />
-      <Stack.Screen name="ProgrammingPage" component={ProgrammingScreen} />
+      <Stack.Screen name="ZonesPage" component={ZonesScreen} />
       <Stack.Screen name="HistoryPage" component={HistoryScreen} />
       <Stack.Screen name="SettingsPage" component={SettingsScreen} />
       <Stack.Screen name="SmsPage" component={SmsScreen} />

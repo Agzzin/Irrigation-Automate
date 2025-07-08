@@ -95,7 +95,6 @@ const InitialPageScreen = () => {
 
       const data = await response.json();
 
-      // Validações básicas
       if (
         typeof data.soilMoisture !== 'number' ||
         typeof data.temperature !== 'number' ||
@@ -622,6 +621,7 @@ const styles = StyleSheet.create({
   manualButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent:'center',
     backgroundColor: '#296C32',
     paddingVertical: 20,
     paddingHorizontal: 75,
