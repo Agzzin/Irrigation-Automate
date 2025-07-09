@@ -63,3 +63,26 @@ model Dispositivo {
   usuarioId Int
   usuario   Usuario @relation(fields: [usuarioId], references: [id])
 }
+
+model Zone {
+  id             String   @id @default(uuid())
+  name           String
+  status         String   // 'active', 'inactive', 'error'
+  flowRate       Float
+  pressure       Float
+  emitterCount   Int
+  emitterSpacing Int
+  lastWatered    DateTime?
+  nextWatering   DateTime?
+  scheduleId     String   @unique
+  schedule       Schedule @relation(fields: [scheduleId], references: [id])
+}
+
+
+model Schedule {
+  id        String   @id @default(cuid())
+  duration  Int
+  frequency String   // 'daily', 'weekly', 'custom'
+  days      Int[]    // Dias da semana, caso seja customizado
+  zone      Zone?
+}
