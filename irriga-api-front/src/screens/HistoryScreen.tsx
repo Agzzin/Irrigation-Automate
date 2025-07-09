@@ -14,6 +14,7 @@ import {
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {BarChart, LineChart, PieChart} from 'react-native-chart-kit';
+import { useZones } from '../contexts/ZonesContext';
 
 const STATUS_OPTIONS = ['concluído', 'ignorado', 'automático', '70% umidade'];
 const PERIOD_OPTIONS = ['7', '30'] as const;
@@ -106,6 +107,7 @@ const FilterGroup = ({
 );
 
 const HistoryScreen = () => {
+  const { zones } = useZones();
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('7');
   const [statusFilters, setStatusFilters] = useState<string[]>([]);
   const [blacklistFilters, setBlacklistFilters] = useState<string[]>([]);
@@ -362,6 +364,18 @@ const HistoryScreen = () => {
             chartConfig={chartConfig}
           />
         )}
+
+        {filteredHistory.map(item => {
+          const zoneName = zones?.find(z => z.id === item.zone)?.name || item.zone;
+          return (
+            <View key={item.id} style={{marginBottom: 12}}>
+              <Text style={{fontWeight: 'bold'}}>{zoneName}</Text>
+              <Text>Status: {item.status}</Text>
+              <Text>Duração: {item.duration}</Text>
+              <Text>Data: {new Date(item.date).toLocaleString()}</Text>
+            </View>
+          );
+        })}
       </View>
     </ScrollView>
   );

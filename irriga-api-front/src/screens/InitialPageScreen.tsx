@@ -19,10 +19,13 @@ import CloudSun from '../../assets/icons/cloud-sun.svg';
 import Thermometer from '../../assets/icons/thermometer-half.svg';
 import Power from '../../assets/icons/power.svg';
 import Water from '../../assets/icons/water.svg';
+import { useZones } from '../contexts/ZonesContext';
 
 const MIN_UMIDADE = 40;
 
 const InitialPageScreen = () => {
+  const { zones, isLoading: loadingZones, error: errorZones } = useZones();
+
   const [switchIrrigationMode, setSwitchIrrigationMode] = useState(false);
   const [switchPauseRain, setSwitchPauseRain] = useState(false);
   const [switchMinHumidity, setSwitchMinHumidity] = useState(false);
@@ -39,12 +42,6 @@ const InitialPageScreen = () => {
   const [sensorError, setSensorError] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-
-  const [zonasStatus, setZonasStatus] = useState([
-    {nome: 'Zona 1', ligada: bombaLigada ?? false},
-    {nome: 'Zona 2', ligada: false},
-    {nome: 'Zona 3', ligada: false},
-  ]);
 
   // Carregar configurações do AsyncStorage
   useEffect(() => {
@@ -137,12 +134,6 @@ const InitialPageScreen = () => {
       if (typeof data.ligada !== 'boolean') throw new Error('Dados da bomba inválidos');
 
       setBombaLigada(data.ligada);
-
-      setZonasStatus(prev => {
-        const updated = [...prev];
-        updated[0].ligada = data.ligada;
-        return updated;
-      });
     } catch (error) {
       Alert.alert('Erro', 'Não foi possível obter o estado da bomba.');
       setBombaLigada(null);
@@ -256,13 +247,6 @@ const InitialPageScreen = () => {
 
         // Reconsulta o estado para garantir sincronização
         await fetchEstadoBomba();
-
-        // Atualiza zonas (simples, só Zona 1 pela API)
-        setZonasStatus(prev => {
-          const updated = [...prev];
-          updated[0].ligada = novoEstado;
-          return updated;
-        });
       } catch (error) {
         Alert.alert('Erro', 'Não foi possível alterar o estado da bomba.');
       } finally {
@@ -390,16 +374,16 @@ const InitialPageScreen = () => {
       </View>
 
       <View style={styles.zonasContainer}>
-        {zonasStatus.map((zona, index) => (
-          <View key={index} style={styles.zonaCard}>
-            <Text style={styles.zonaNome}>{zona.nome}</Text>
+        {zones?.map((zona, index) => (
+          <View key={zona.id} style={styles.zonaCard}>
+            <Text style={styles.zonaNome}>{zona.name}</Text>
             <Water width={30} height={30} color="#296C32" />
             <Text
               style={[
                 styles.statusTextZona,
-                {color: zona.ligada ? '#296C32' : '#cc4444'},
+                { color: zona.status === 'active' ? '#296C32' : '#cc4444' },
               ]}>
-              {zona.ligada ? 'Ligada' : 'Desligada'}
+              {zona.status === 'active' ? 'Ligada' : 'Desligada'}
             </Text>
           </View>
         ))}

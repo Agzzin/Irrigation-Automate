@@ -1,8 +1,16 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, FlatList, StyleSheet, ScrollView } from 'react-native';
-import MaterialIcons  from 'react-native-vector-icons/MaterialIcons';
+import React, {useState} from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  StyleSheet,
+  Alert,
+} from 'react-native';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import ZoneModal from './ZoneModal';
+import {useZones} from '../contexts/ZonesContext';
 
 type DripZone = {
   id: string;
@@ -11,80 +19,69 @@ type DripZone = {
   flowRate: number;
   pressure: number;
   emitterCount: number;
-  emitterSpacing: number; 
+  emitterSpacing: number;
   lastWatered?: string;
   nextWatering?: string;
   schedule: {
-    duration: number; // minutos
+    duration: number;
     frequency: 'daily' | 'weekly' | 'custom';
     days?: number[];
   };
 };
 
-const initialDripZones: DripZone[] = [
-  {
-    id: '1',
-    name: 'Zona de manga',
-    status: 'active',
-    flowRate: 2000,
-    pressure: 15,
-    emitterCount: 50,
-    emitterSpacing: 30,
-    schedule: {
-      duration: 30,
-      frequency: 'daily',
-    }
-  },
-  {
-    id: '2',
-    name: 'Zona de uva',
-    status: 'active',
-    flowRate: 1500,
-    pressure: 12,
-    emitterCount: 20,
-    emitterSpacing: 15,
-    schedule: {
-      duration: 20,
-      frequency: 'weekly',
-      days: [1, 3, 5]
-    }
-  }
-];
-
 const DripZonesScreen = () => {
-  const [zones, setZones] = useState<DripZone[]>(initialDripZones);
+  const {zones, isLoading, error} = useZones();
   const [modalVisible, setModalVisible] = useState(false);
   const [currentZone, setCurrentZone] = useState<DripZone | null>(null);
 
   const toggleZone = (zoneId: string) => {
-    setZones(prevZones =>
-      prevZones.map(zone =>
-        zone.id === zoneId
-          ? {
-              ...zone,
-              status: zone.status === 'active' ? 'inactive' : 'active'
-            }
-          : zone
-      )
+    Alert.alert(
+      'Função não implementada',
+      'Ativar/desativar zona deve ser feito via API.',
     );
   };
 
-  const renderZoneItem = ({ item }: { item: DripZone }) => (
+  if (isLoading) return <Text>Carregando zonas...</Text>;
+  if (error) return <Text>Erro ao carregar zonas</Text>;
+
+  const dripZones: DripZone[] = (zones ?? []).map((z: any) => ({
+    id: z.id,
+    name: z.name,
+    status: z.status ?? 'inactive',
+    flowRate: z.flowRate ?? 0,
+    pressure: z.pressure ?? 0,
+    emitterCount: z.emitterCount ?? 0,
+    emitterSpacing: z.emitterSpacing ?? 0,
+    lastWatered: z.lastWatered,
+    nextWatering: z.nextWatering,
+    schedule: {
+      duration: z.schedule?.duration ?? 0,
+      frequency: z.schedule?.frequency ?? 'daily',
+      days: z.schedule?.days ?? [],
+    },
+  }));
+
+  const renderZoneItem = ({item}: {item: DripZone}) => (
     <View style={styles.zoneCard}>
       <View style={styles.zoneHeader}>
-        <MaterialIcons 
-          name="water-drop" 
-          size={24} 
-          color={item.status === 'active' ? '#296C32' : '#9E9E9E'} 
+        <MaterialIcons
+          name="water-drop"
+          size={24}
+          color={item.status === 'active' ? '#296C32' : '#9E9E9E'}
         />
         <Text style={styles.zoneName}>{item.name}</Text>
-        <View style={[
-          styles.statusBadge,
-          item.status === 'active' && styles.statusActive,
-          item.status === 'error' && styles.statusError
-        ]}>
+        <View
+          style={[
+            styles.statusBadge,
+            item.status === 'active' && styles.statusActive,
+            item.status === 'error' && styles.statusError,
+          ]}>
           <Text style={styles.statusText}>
-            {item.status === 'active' ? 'Ativo' : item.status === 'error' ? 'Erro' : 'Inativo'}
+            {item.status === 'active'
+              ? 'Ativo'
+              : item.status === 'error'
+              ? 'Erro'
+              : 'Inativo'}
           </Text>
         </View>
       </View>
@@ -107,28 +104,26 @@ const DripZonesScreen = () => {
       <View style={styles.zoneSchedule}>
         <FontAwesome name="clock-o" size={16} color="#666" />
         <Text style={styles.scheduleText}>
-          {item.schedule.frequency === 'daily' 
-            ? `Diário - ${item.schedule.duration}min` 
+          {item.schedule.frequency === 'daily'
+            ? `Diário - ${item.schedule.duration}min`
             : `Seg/Qua/Sex - ${item.schedule.duration}min`}
         </Text>
       </View>
 
       <View style={styles.zoneActions}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => toggleZone(item.id)}
-        >
+          onPress={() => toggleZone(item.id)}>
           <Text style={styles.actionButtonText}>
             {item.status === 'active' ? 'Desativar' : 'Ativar'}
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.actionButton, styles.editButton]}
           onPress={() => {
             setCurrentZone(item);
             setModalVisible(true);
-          }}
-        >
+          }}>
           <Text style={styles.actionButtonText}>Configurar</Text>
         </TouchableOpacity>
       </View>
@@ -138,21 +133,20 @@ const DripZonesScreen = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Zonas de Gotejamento</Text>
-      
+
       <FlatList
-        data={zones}
+        data={dripZones}
         renderItem={renderZoneItem}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContent}
       />
 
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.addButton}
         onPress={() => {
           setCurrentZone(null);
           setModalVisible(true);
-        }}
-      >
+        }}>
         <MaterialIcons name="add" size={24} color="white" />
         <Text style={styles.addButtonText}>Nova Zona</Text>
       </TouchableOpacity>
@@ -163,15 +157,6 @@ const DripZonesScreen = () => {
         currentZone={currentZone}
         setCurrentZone={setCurrentZone}
         onSave={zone => {
-          if (zone.id) {
-            setZones(prev => prev.map(z => z.id === zone.id ? zone : z));
-          } else {
-            setZones(prev => [...prev, {
-              ...zone,
-              id: Date.now().toString(),
-              status: 'active'
-            }]);
-          }
           setModalVisible(false);
         }}
       />
@@ -200,7 +185,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
@@ -223,7 +208,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E0E0E0',
   },
   statusActive: {
-    backgroundColor: '#C8E6C9', 
+    backgroundColor: '#C8E6C9',
   },
   statusError: {
     backgroundColor: '#FFEBEE',
@@ -290,7 +275,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexDirection: 'row',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 4,
@@ -371,4 +356,4 @@ const styles = StyleSheet.create({
 });
 
 export default DripZonesScreen;
-export type { DripZone };
+export type {DripZone};

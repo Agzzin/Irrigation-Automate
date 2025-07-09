@@ -18,7 +18,7 @@ export default function BottomTabs() {
           if (route.name === 'Inicio') {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'Zonas') {
-            iconName = focused ? 'list' : 'list-outline';
+            iconName = focused ? 'crop' : 'crop-outline';
           } else if (route.name === 'Histórico') {
             iconName = focused ? 'time' : 'time-outline';
           } else if (route.name === 'Configurações') {
@@ -31,7 +31,7 @@ export default function BottomTabs() {
       })}
     >
       <Tab.Screen name="Inicio" component={HomeScreen} />
-      <Tab.Screen name="Zones" component={ZonesScreen} />
+      <Tab.Screen name="Zonas" component={ZonesScreen} />
       <Tab.Screen name="Histórico" component={HistoryScreen} />
       <Tab.Screen name="Configurações" component={SettingsScreen} />
     </Tab.Navigator>
