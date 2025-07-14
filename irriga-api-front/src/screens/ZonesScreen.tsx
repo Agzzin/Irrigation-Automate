@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import ZoneModal from './ZoneModal';
 import {useZones} from '../contexts/ZonesContext';
 
@@ -29,38 +30,114 @@ type DripZone = {
   };
 };
 
+const STORAGE_KEY = '@drip_zones';
+
 const DripZonesScreen = () => {
   const {zones, isLoading, error, toggleZoneStatus} = useZones();
   const [modalVisible, setModalVisible] = useState(false);
   const [currentZone, setCurrentZone] = useState<DripZone | null>(null);
   const [localZones, setLocalZones] = useState<DripZone[]>([]);
 
-  React.useEffect(() => {
-    if (zones) {
-      setLocalZones((zones ?? []).map((z: any) => ({
-        id: z.id,
-        name: z.name,
-        status: z.status ?? 'inactive',
-        flowRate: z.flowRate ?? 0,
-        pressure: z.pressure ?? 0,
-        emitterCount: z.emitterCount ?? 0,
-        emitterSpacing: z.emitterSpacing ?? 0,
-        lastWatered: z.lastWatered,
-        nextWatering: z.nextWatering,
-        schedule: {
-          duration: z.schedule?.duration ?? 0,
-          frequency: z.schedule?.frequency ?? 'daily',
-          days: z.schedule?.days ?? [],
-        },
-      })));
+  const loadZones = async () => {
+    try {
+      const jsonValue = await AsyncStorage.getItem(STORAGE_KEY);
+      if (jsonValue != null) {
+        const savedZones = JSON.parse(jsonValue);
+        setLocalZones(savedZones);
+      } else if (zones) {
+        setLocalZones(
+          (zones ?? []).map((z: any) => ({
+            id: z.id,
+            name: z.name,
+            status: z.status ?? 'inactive',
+            flowRate: z.flowRate ?? 0,
+            pressure: z.pressure ?? 0,
+            emitterCount: z.emitterCount ?? 0,
+            emitterSpacing: z.emitterSpacing ?? 0,
+            lastWatered: z.lastWatered,
+            nextWatering: z.nextWatering,
+            schedule: {
+              duration: z.schedule?.duration ?? 0,
+              frequency: z.schedule?.frequency ?? 'daily',
+              days: z.schedule?.days ?? [],
+            },
+          })),
+        );
+      }
+    } catch (e) {
+      console.error('Erro ao carregar zonas do AsyncStorage', e);
+      if (zones) {
+        setLocalZones(
+          (zones ?? []).map((z: any) => ({
+            id: z.id,
+            name: z.name,
+            status: z.status ?? 'inactive',
+            flowRate: z.flowRate ?? 0,
+            pressure: z.pressure ?? 0,
+            emitterCount: z.emitterCount ?? 0,
+            emitterSpacing: z.emitterSpacing ?? 0,
+            lastWatered: z.lastWatered,
+            nextWatering: z.nextWatering,
+            schedule: {
+              duration: z.schedule?.duration ?? 0,
+              frequency: z.schedule?.frequency ?? 'daily',
+              days: z.schedule?.days ?? [],
+            },
+          })),
+        );
+      }
     }
+  };
+
+  const saveZones = async (zonesToSave: DripZone[]) => {
+    try {
+      const jsonValue = JSON.stringify(zonesToSave);
+      await AsyncStorage.setItem(STORAGE_KEY, jsonValue);
+    } catch (e) {
+      console.error('Erro ao salvar zonas no AsyncStorage', e);
+    }
+  };
+
+  useEffect(() => {
+    loadZones();
   }, [zones]);
 
+  useEffect(() => {
+    saveZones(localZones);
+  }, [localZones]);
+
   const toggleZone = (zoneId: string) => {
-    const zone = dripZones.find(z => z.id === zoneId);
-    if (zone) {
-      toggleZoneStatus(zone);
-    }
+    setLocalZones(prev =>
+      prev.map(zone => {
+        if (zone.id === zoneId) {
+          const newStatus = (
+            zone.status === 'active' ? 'inactive' : 'active'
+          ) as 'active' | 'inactive';
+          const updatedZone = {...zone, status: newStatus};
+          toggleZoneStatus(updatedZone);
+          return updatedZone;
+        }
+        return zone;
+      }),
+    );
+  };
+
+  const deleteZone = (zoneId: string) => {
+    Alert.alert(
+      'Confirmar exclusão',
+      'Tem certeza que deseja deletar esta zona?',
+      [
+        {text: 'Cancelar', style: 'cancel'},
+        {
+          text: 'Deletar',
+          style: 'destructive',
+          onPress: () => {
+            setLocalZones(prevZones => prevZones.filter(z => z.id !== zoneId));
+          },
+        },
+      ],
+      {cancelable: true},
+    );
   };
 
   if (isLoading) return <Text>Carregando zonas...</Text>;
@@ -125,6 +202,7 @@ const DripZonesScreen = () => {
             {item.status === 'active' ? 'Desativar' : 'Ativar'}
           </Text>
         </TouchableOpacity>
+
         <TouchableOpacity
           style={[styles.actionButton, styles.editButton]}
           onPress={() => {
@@ -132,6 +210,12 @@ const DripZonesScreen = () => {
             setModalVisible(true);
           }}>
           <Text style={styles.actionButtonText}>Configurar</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.actionButton, styles.deleteButton]}
+          onPress={() => deleteZone(item.id)}>
+          <Text style={[styles.actionButtonText, {color: 'red'}]}>Deletar</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -279,6 +363,9 @@ const styles = StyleSheet.create({
   editButton: {
     backgroundColor: '#296C32',
   },
+  deleteButton: {
+    backgroundColor: '#FFCDD2',
+  },
   actionButtonText: {
     fontWeight: '500',
   },
@@ -302,74 +389,6 @@ const styles = StyleSheet.create({
   addButtonText: {
     color: 'white',
     fontWeight: 'bold',
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'white',
-    padding: 16,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 24,
-  },
-  formGroup: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-    color: '#333',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#BDBDBD',
-    borderRadius: 4,
-    padding: 12,
-    fontSize: 16,
-  },
-  techSpecs: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  specInput: {
-    width: '48%',
-    marginBottom: 12,
-  },
-  scheduleControl: {
-    marginBottom: 16,
-  },
-  frequencyOptions: {
-    flexDirection: 'row',
-    marginTop: 8,
-  },
-  freqButton: {
-    padding: 10,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#BDBDBD',
-    marginRight: 8,
-  },
-  freqButtonActive: {
-    backgroundColor: '#E3F2FD',
-    borderColor: '#2196F3',
-  },
-  freqButtonText: {
-    fontSize: 14,
-  },
-  saveButton: {
-    backgroundColor: '#2196F3',
-    padding: 16,
-    borderRadius: 4,
-    alignItems: 'center',
-    marginVertical: 16,
-  },
-  saveButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16,
   },
 });
 
