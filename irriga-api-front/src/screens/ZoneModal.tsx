@@ -97,7 +97,7 @@ const ZoneModal: React.FC<ZoneModalProps> = ({ visible, onClose, currentZone, se
             <TextInput
               style={[styles.input, { width: 100 }]}
               keyboardType="numeric"
-              value={currentZone?.schedule.duration?.toString() || ''}
+              value={(currentZone?.schedule?.duration !== undefined ? currentZone.schedule.duration : '').toString()}
               onChangeText={text => setCurrentZone((prev: DripZone | null) => ({
                 ...(prev || {} as DripZone),
                 schedule: {
@@ -115,7 +115,7 @@ const ZoneModal: React.FC<ZoneModalProps> = ({ visible, onClose, currentZone, se
                   key={freq}
                   style={[
                     styles.freqButton,
-                    currentZone?.schedule.frequency === freq && styles.freqButtonActive
+                    (currentZone?.schedule?.frequency === freq) && styles.freqButtonActive
                   ]}
                   onPress={() => setCurrentZone((prev: DripZone | null) => ({
                     ...(prev || {} as DripZone),

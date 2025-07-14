@@ -30,36 +30,43 @@ type DripZone = {
 };
 
 const DripZonesScreen = () => {
-  const {zones, isLoading, error} = useZones();
+  const {zones, isLoading, error, toggleZoneStatus} = useZones();
   const [modalVisible, setModalVisible] = useState(false);
   const [currentZone, setCurrentZone] = useState<DripZone | null>(null);
+  const [localZones, setLocalZones] = useState<DripZone[]>([]);
+
+  React.useEffect(() => {
+    if (zones) {
+      setLocalZones((zones ?? []).map((z: any) => ({
+        id: z.id,
+        name: z.name,
+        status: z.status ?? 'inactive',
+        flowRate: z.flowRate ?? 0,
+        pressure: z.pressure ?? 0,
+        emitterCount: z.emitterCount ?? 0,
+        emitterSpacing: z.emitterSpacing ?? 0,
+        lastWatered: z.lastWatered,
+        nextWatering: z.nextWatering,
+        schedule: {
+          duration: z.schedule?.duration ?? 0,
+          frequency: z.schedule?.frequency ?? 'daily',
+          days: z.schedule?.days ?? [],
+        },
+      })));
+    }
+  }, [zones]);
 
   const toggleZone = (zoneId: string) => {
-    Alert.alert(
-      'Função não implementada',
-      'Ativar/desativar zona deve ser feito via API.',
-    );
+    const zone = dripZones.find(z => z.id === zoneId);
+    if (zone) {
+      toggleZoneStatus(zone);
+    }
   };
 
   if (isLoading) return <Text>Carregando zonas...</Text>;
   if (error) return <Text>Erro ao carregar zonas</Text>;
 
-  const dripZones: DripZone[] = (zones ?? []).map((z: any) => ({
-    id: z.id,
-    name: z.name,
-    status: z.status ?? 'inactive',
-    flowRate: z.flowRate ?? 0,
-    pressure: z.pressure ?? 0,
-    emitterCount: z.emitterCount ?? 0,
-    emitterSpacing: z.emitterSpacing ?? 0,
-    lastWatered: z.lastWatered,
-    nextWatering: z.nextWatering,
-    schedule: {
-      duration: z.schedule?.duration ?? 0,
-      frequency: z.schedule?.frequency ?? 'daily',
-      days: z.schedule?.days ?? [],
-    },
-  }));
+  const dripZones: DripZone[] = localZones;
 
   const renderZoneItem = ({item}: {item: DripZone}) => (
     <View style={styles.zoneCard}>
@@ -153,11 +160,24 @@ const DripZonesScreen = () => {
 
       <ZoneModal
         visible={modalVisible}
-        onClose={() => setModalVisible(false)}
+        onClose={() => {
+          setModalVisible(false);
+          setCurrentZone(null);
+        }}
         currentZone={currentZone}
         setCurrentZone={setCurrentZone}
         onSave={zone => {
+          setLocalZones(prev => {
+            const exists = prev.some(z => z.id === zone.id);
+            if (exists) {
+              return prev.map(z => (z.id === zone.id ? zone : z));
+            } else {
+              // Gera um id simples se for novo
+              return [...prev, {...zone, id: Date.now().toString()}];
+            }
+          });
           setModalVisible(false);
+          setCurrentZone(null);
         }}
       />
     </View>
