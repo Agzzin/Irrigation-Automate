@@ -129,7 +129,6 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE zona
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
   try {
