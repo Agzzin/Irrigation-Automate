@@ -154,8 +154,7 @@ const DripZonesScreen = () => {
           setCurrentZone(null);
           setModalVisible(true);
         }}>
-        <MaterialIcons name="add" size={24} color="white" />
-        <Text style={styles.addButtonText}>Nova Zona</Text>
+        <Text style={styles.addButtonText}>Nova{'\n'}Zona</Text>
       </TouchableOpacity>
 
       <ZoneModal
@@ -288,9 +287,9 @@ const styles = StyleSheet.create({
     bottom: 24,
     right: 24,
     backgroundColor: '#296C32',
-    borderRadius: 28,
-    width: 56,
-    height: 56,
+    borderRadius: 50,
+    width: 75,
+    height: 75,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -303,7 +302,6 @@ const styles = StyleSheet.create({
   addButtonText: {
     color: 'white',
     fontWeight: 'bold',
-    marginLeft: 8,
   },
   modalContainer: {
     flex: 1,

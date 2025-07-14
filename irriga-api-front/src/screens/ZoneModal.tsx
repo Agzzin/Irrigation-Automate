@@ -11,6 +11,22 @@ interface ZoneModalProps {
 }
 
 const ZoneModal: React.FC<ZoneModalProps> = ({ visible, onClose, currentZone, setCurrentZone, onSave }) => {
+
+  function isFormValid(zone: DripZone | null): boolean {
+    if (!zone) return false;
+    if (!zone.name || zone.name.trim() === '') return false;
+    if (!zone.flowRate || zone.flowRate <= 0) return false;
+    if (!zone.pressure || zone.pressure <= 0) return false;
+    if (!zone.emitterCount || zone.emitterCount <= 0) return false;
+    if (!zone.emitterSpacing || zone.emitterSpacing <= 0) return false;
+    if (!zone.schedule) return false;
+    if (!zone.schedule.duration || zone.schedule.duration <= 0) return false;
+    if (!zone.schedule.frequency) return false;
+    return true;
+  }
+
+  const formIsValid = isFormValid(currentZone);
+
   return (
     <Modal
       animationType="slide"
@@ -97,7 +113,7 @@ const ZoneModal: React.FC<ZoneModalProps> = ({ visible, onClose, currentZone, se
             <TextInput
               style={[styles.input, { width: 100 }]}
               keyboardType="numeric"
-              value={(currentZone?.schedule?.duration !== undefined ? currentZone.schedule.duration : '').toString()}
+              value={currentZone?.schedule?.duration?.toString() || ''}
               onChangeText={text => setCurrentZone((prev: DripZone | null) => ({
                 ...(prev || {} as DripZone),
                 schedule: {
@@ -115,7 +131,7 @@ const ZoneModal: React.FC<ZoneModalProps> = ({ visible, onClose, currentZone, se
                   key={freq}
                   style={[
                     styles.freqButton,
-                    (currentZone?.schedule?.frequency === freq) && styles.freqButtonActive
+                    currentZone?.schedule?.frequency === freq && styles.freqButtonActive
                   ]}
                   onPress={() => setCurrentZone((prev: DripZone | null) => ({
                     ...(prev || {} as DripZone),
@@ -134,13 +150,14 @@ const ZoneModal: React.FC<ZoneModalProps> = ({ visible, onClose, currentZone, se
           </View>
         </View>
 
-        <TouchableOpacity 
-          style={styles.saveButton}
+        <TouchableOpacity
+          style={[styles.saveButton, !formIsValid && styles.saveButtonDisabled]}
           onPress={() => {
-            if (currentZone) {
+            if (currentZone && formIsValid) {
               onSave(currentZone);
             }
           }}
+          disabled={!formIsValid}
         >
           <Text style={styles.saveButtonText}>Salvar Configurações</Text>
         </TouchableOpacity>
@@ -204,18 +221,21 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   freqButtonActive: {
-    backgroundColor: '#E3F2FD',
-    borderColor: '#2196F3',
+    backgroundColor: '#296C321A',
+    borderColor: '#296C32',
   },
   freqButtonText: {
     fontSize: 14,
   },
   saveButton: {
-    backgroundColor: '#2196F3',
+    backgroundColor: '#296C32',
     padding: 16,
     borderRadius: 4,
     alignItems: 'center',
     marginVertical: 16,
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#A5D6A7', 
   },
   saveButtonText: {
     color: 'white',
