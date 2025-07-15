@@ -19,6 +19,8 @@ import CloudSun from '../../assets/icons/cloud-sun.svg';
 import Thermometer from '../../assets/icons/thermometer-half.svg';
 import Power from '../../assets/icons/power.svg';
 import Water from '../../assets/icons/water.svg';
+import { DripZone } from '../screens/ZonesScreen';
+
 import { useZones } from '../contexts/ZonesContext';
 
 const MIN_UMIDADE = 40;
@@ -42,6 +44,9 @@ const InitialPageScreen = () => {
   const [sensorError, setSensorError] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  
+
+  
 
   // Carregar configurações do AsyncStorage
   useEffect(() => {
@@ -60,26 +65,14 @@ const InitialPageScreen = () => {
         console.warn('Erro ao carregar configurações:', e);
       }
     };
-
     carregarConfiguracoes();
   }, []);
 
   // Salvar configurações no AsyncStorage
-  useEffect(() => {
-    AsyncStorage.setItem('modoAuto', switchIrrigationMode.toString());
-  }, [switchIrrigationMode]);
-
-  useEffect(() => {
-    AsyncStorage.setItem('pausarChuva', switchPauseRain.toString());
-  }, [switchPauseRain]);
-
-  useEffect(() => {
-    AsyncStorage.setItem('umidadeMin', switchMinHumidity.toString());
-  }, [switchMinHumidity]);
-
-  useEffect(() => {
-    AsyncStorage.setItem('notificacoes', switchNotifications.toString());
-  }, [switchNotifications]);
+  useEffect(() => { AsyncStorage.setItem('modoAuto', switchIrrigationMode.toString()); }, [switchIrrigationMode]);
+  useEffect(() => { AsyncStorage.setItem('pausarChuva', switchPauseRain.toString()); }, [switchPauseRain]);
+  useEffect(() => { AsyncStorage.setItem('umidadeMin', switchMinHumidity.toString()); }, [switchMinHumidity]);
+  useEffect(() => { AsyncStorage.setItem('notificacoes', switchNotifications.toString()); }, [switchNotifications]);
 
   // Fetch dados sensores
   const fetchSensorData = useCallback(async () => {
@@ -140,6 +133,7 @@ const InitialPageScreen = () => {
     }
   }, []);
 
+  // Check conexão
   const checkConexao = useCallback(async () => {
     try {
       const response = await fetch('http://192.168.0.100/ping');
@@ -161,10 +155,10 @@ const InitialPageScreen = () => {
     return () => clearInterval(interval);
   }, [fetchSensorData, fetchEstadoBomba, checkConexao]);
 
+  // Automatizar Irrigação conforme lógica
   useEffect(() => {
     const automatizarIrrigacao = async () => {
-      if (!switchIrrigationMode) return; 
-
+      if (!switchIrrigationMode) return;
       if (
         soilMoisture === null ||
         weather === '' ||
@@ -185,19 +179,17 @@ const InitialPageScreen = () => {
         return;
       }
 
-      // Umidade mínima
       if (
         switchMinHumidity &&
         soilMoisture >= MIN_UMIDADE &&
         bombaLigada
       ) {
-        await toggleBomba(false); // Desliga a bomba
+        await toggleBomba(false);
         if (switchNotifications)
           Alert.alert('Automação', 'Irrigação desligada - umidade suficiente.');
         return;
       }
 
-      // Liga bomba se umidade abaixo do mínimo e bomba desligada
       if (
         soilMoisture < MIN_UMIDADE &&
         !bombaLigada
@@ -208,7 +200,6 @@ const InitialPageScreen = () => {
         return;
       }
     };
-
     automatizarIrrigacao();
   }, [
     switchIrrigationMode,
@@ -222,30 +213,22 @@ const InitialPageScreen = () => {
     switchNotifications,
   ]);
 
-  // Função para ligar/desligar bomba (param opcional para força estado)
+  // Função para ligar/desligar bomba
   const toggleBomba = useCallback(
     async (forcarEstado?: boolean) => {
       if (bombaLigada === null && forcarEstado === undefined) return;
 
-      // Define novo estado
       const novoEstado = forcarEstado ?? !bombaLigada;
 
       if (!isOnline) {
         Alert.alert('Erro', 'Dispositivo offline. Não é possível alterar a bomba.');
         return;
       }
-
       try {
         setLoadingBomba(true);
-        const url = `http://192.168.0.100/bomba/${
-          novoEstado ? 'ligar' : 'desligar'
-        }`;
-
+        const url = `http://192.168.0.100/bomba/${novoEstado ? 'ligar' : 'desligar'}`;
         const response = await fetch(url, {method: 'POST'});
-
         if (!response.ok) throw new Error('Falha na requisição');
-
-        // Reconsulta o estado para garantir sincronização
         await fetchEstadoBomba();
       } catch (error) {
         Alert.alert('Erro', 'Não foi possível alterar o estado da bomba.');
@@ -264,13 +247,31 @@ const InitialPageScreen = () => {
     checkConexao();
   };
 
+  // Tratamento de loading e erro das zonas
+  if (loadingZones) {
+    return (
+      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+        <ActivityIndicator size="large" color="#296C32" />
+        <Text>Carregando zonas...</Text>
+      </View>
+    );
+  }
+
+  if (errorZones) {
+    return (
+      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+        <Text style={{color: 'red', fontWeight: 'bold'}}>Erro ao carregar zonas</Text>
+      </View>
+    );
+  }
+
   return (
     <ScrollView
       style={{flex: 1}}
       contentContainerStyle={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }>
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+    >
+      {/* DASHBOARD */}
       <View style={styles.dashboard}>
         <Text style={styles.dashboardText}>DASHBOARD</Text>
         <View style={{flexDirection: 'row', alignItems: 'center'}}>
@@ -291,16 +292,18 @@ const InitialPageScreen = () => {
         Conexão: {isOnline ? 'Conectado' : 'Desconectado'}
       </Text>
 
+      {/* Status Atual */}
       <View style={styles.statusContainer}>
         <Text style={styles.statusText}>Status Atual</Text>
         <View style={styles.irrigationInfo}>
           <TouchableOpacity
             style={[
               styles.iconContainer,
-              !isOnline && {backgroundColor: '#999'}, // cinza se offline
+              !isOnline && {backgroundColor: '#999'},
             ]}
             onPress={() => toggleBomba()}
-            disabled={loadingBomba || bombaLigada === null || !isOnline}>
+            disabled={loadingBomba || bombaLigada === null || !isOnline}
+          >
             {loadingBomba ? (
               <ActivityIndicator color="#fff" />
             ) : (
@@ -322,12 +325,14 @@ const InitialPageScreen = () => {
           </View>
         </View>
       </View>
+
       {sensorError && (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{sensorError}</Text>
         </View>
       )}
 
+      {/* Cards de sensores */}
       <View style={styles.cardRow}>
         <View style={styles.card}>
           <SoilMoisture width={30} height={30} />
@@ -359,7 +364,8 @@ const InitialPageScreen = () => {
             },
           ]}
           onPress={() => toggleBomba()}
-          disabled={loadingBomba || bombaLigada === null || !isOnline}>
+          disabled={loadingBomba || bombaLigada === null || !isOnline}
+        >
           {loadingBomba ? (
             <ActivityIndicator color="#fff" />
           ) : (
@@ -374,21 +380,26 @@ const InitialPageScreen = () => {
       </View>
 
       <View style={styles.zonasContainer}>
-        {zones?.map((zona, index) => (
-          <View key={zona.id} style={styles.zonaCard}>
-            <Text style={styles.zonaNome}>{zona.name}</Text>
-            <Water width={30} height={30} color="#296C32" />
-            <Text
-              style={[
-                styles.statusTextZona,
-                { color: zona.status === 'active' ? '#296C32' : '#cc4444' },
-              ]}>
-              {zona.status === 'active' ? 'Ligada' : 'Desligada'}
-            </Text>
-          </View>
-        ))}
+        {Array.isArray(zones) && zones.length > 0 ? (
+          zones.map((zona) => (
+            <View key={zona.id} style={styles.zonaCard}>
+              <Text style={styles.zonaNome}>{zona.name}</Text>
+              <Water width={30} height={30} color="#296C32" />
+              <Text
+                style={[
+                  styles.statusTextZona,
+                  { color: zona.status === 'active' ? '#296C32' : '#cc4444' },
+                ]}>
+                {zona.status === 'active' ? 'Ligada' : 'Desligada'}
+              </Text>
+            </View>
+          ))
+        ) : (
+          <Text style={{color: '#888', marginTop: 10}}>Nenhuma zona cadastrada.</Text>
+        )}
       </View>
 
+      {/* Configurações */}
       <View style={styles.cardContainer}>
         <Text style={styles.cardTitle}>Conectividade & Configurações</Text>
 

@@ -48,7 +48,7 @@ const ZoneModal: React.FC<ZoneModalProps> = ({ visible, onClose, currentZone, se
               ...(prev || {} as DripZone),
               name: text
             }))}
-            placeholder="Ex: Canteiro A, Vasos Varanda"
+            placeholder="Ex: Qual a área da zona?"
           />
         </View>
 

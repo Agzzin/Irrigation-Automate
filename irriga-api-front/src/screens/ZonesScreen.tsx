@@ -33,7 +33,7 @@ type DripZone = {
 const STORAGE_KEY = '@drip_zones';
 
 const DripZonesScreen = () => {
-  const {zones, isLoading, error, toggleZoneStatus} = useZones();
+  const {zones, isLoading, error, toggleZoneStatus, refetch} = useZones();
   const [modalVisible, setModalVisible] = useState(false);
   const [currentZone, setCurrentZone] = useState<DripZone | null>(null);
   const [localZones, setLocalZones] = useState<DripZone[]>([]);
@@ -106,21 +106,25 @@ const DripZonesScreen = () => {
     saveZones(localZones);
   }, [localZones]);
 
-  const toggleZone = (zoneId: string) => {
-    setLocalZones(prev =>
-      prev.map(zone => {
-        if (zone.id === zoneId) {
-          const newStatus = (
-            zone.status === 'active' ? 'inactive' : 'active'
-          ) as 'active' | 'inactive';
-          const updatedZone = {...zone, status: newStatus};
-          toggleZoneStatus(updatedZone);
-          return updatedZone;
-        }
-        return zone;
-      }),
-    );
-  };
+ const toggleZone = (zoneId: string) => {
+  setLocalZones(prev =>
+    prev.map(zone => {
+      if (zone.id === zoneId) {
+        // Função para garantir o tipo literal
+        const toggleStatus = (status: 'active' | 'inactive' | 'error'): 'active' | 'inactive' => {
+          return status === 'active' ? 'inactive' : 'active';
+        };
+
+        const newStatus = toggleStatus(zone.status);
+
+        const updatedZone = {...zone, status: newStatus};
+        toggleZoneStatus(updatedZone);
+        return updatedZone;
+      }
+      return zone;
+    }),
+  );
+};
 
   const deleteZone = (zoneId: string) => {
     Alert.alert(
@@ -249,16 +253,37 @@ const DripZonesScreen = () => {
         }}
         currentZone={currentZone}
         setCurrentZone={setCurrentZone}
-        onSave={zone => {
-          setLocalZones(prev => {
-            const exists = prev.some(z => z.id === zone.id);
-            if (exists) {
-              return prev.map(z => (z.id === zone.id ? zone : z));
-            } else {
-              // Gera um id simples se for novo
-              return [...prev, {...zone, id: Date.now().toString()}];
+        onSave={async zone => {
+          try {
+            const zoneToSend = {
+              ...zone,
+              status: zone.status || 'inactive',
+            };
+            const response = await fetch(
+              'https://a8b45f7f153d.ngrok-free.app/api/zones',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(zoneToSend),
+              },
+            );
+            const savedZone = await response.json();
+
+            if (typeof refetch === 'function') {
+              await refetch();
             }
-          });
+
+            setLocalZones(prev => {
+              const exists = prev.some(z => z.id === savedZone.id);
+              if (exists) {
+                return prev.map(z => (z.id === savedZone.id ? savedZone : z));
+              } else {
+                return [...prev, savedZone];
+              }
+            });
+          } catch (e) {
+            console.error('Erro ao salvar zona na API', e);
+          }
           setModalVisible(false);
           setCurrentZone(null);
         }}
@@ -266,7 +291,6 @@ const DripZonesScreen = () => {
     </View>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
