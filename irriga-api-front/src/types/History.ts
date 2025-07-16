@@ -1,20 +1,26 @@
-export type IrrigationEvent = {
+export interface Zone {
   id: string;
-  date: string;
-  time: string;
-  type: 'automático' | 'manual' | 'falha' | 'notificação';
-  action: string;
-  duration: string;
-  zones: string[];
-  source: 'Automático' | 'Manual' | 'Horário Personalizado';
-  humidity: string;
-  weather: string;
-  status: 'success' | 'error' | 'warning';
-};
+  name: string;
+  status?: string;
+}
 
-export type FilterOptions = {
+export interface HistoryEvent {
+  id: string;
+  eventType: string;
+  action: string;
+  duration: number;
+  humidity?: number;
+  temperature?: number;
+  weather?: string;
+  source: string;
+  createdAt: string;
+  zones: Zone[];
+  status?: 'success' | 'error' | 'warning';
+}
+
+export interface FilterOptions {
   date: string;
   zone: string;
   type: string;
   searchTerm: string;
-};
+}
