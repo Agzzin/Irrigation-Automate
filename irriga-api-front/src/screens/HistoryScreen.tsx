@@ -1,439 +1,409 @@
-import React, {useEffect, useState, useCallback} from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  Appearance,
-  Alert,
-  ActivityIndicator,
-  Dimensions,
+import React, { useState, useEffect } from 'react';
+import { 
+  View, 
+  Text, 
+  FlatList, 
+  TouchableOpacity, 
+  StyleSheet, 
+  TextInput, 
+  ScrollView, 
+  Dimensions 
 } from 'react-native';
-import Ionicons from 'react-native-vector-icons/Ionicons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import {BarChart, LineChart, PieChart} from 'react-native-chart-kit';
-import { useZones } from '../contexts/ZonesContext';
+import { Picker } from '@react-native-picker/picker';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import { BarChart } from 'react-native-chart-kit';
+import { IrrigationEvent, FilterOptions } from '../types/History';
 
-const STATUS_OPTIONS = ['concluído', 'ignorado', 'automático', '70% umidade'];
-const PERIOD_OPTIONS = ['7', '30'] as const;
-
-type Period = (typeof PERIOD_OPTIONS)[number];
-
-type HistoryItem = {
-  id: string;
-  date: string;
-  status: string;
-  zone: string;
-  duration: string;
-  favorite?: boolean;
-};
-
-const dummyHistory: HistoryItem[] = [
-  {
-    id: '1',
-    date: '2025-06-20T07:00:00',
-    status: 'Concluído',
-    zone: 'Zona 1',
-    duration: '00:15:00',
-    favorite: false,
-  },
-  {
-    id: '2',
-    date: '2025-06-19T18:00:00',
-    status: 'Ignorado',
-    zone: 'Zona 2',
-    duration: '00:00:00',
-    favorite: false,
-  },
-  {
-    id: '3',
-    date: '2025-06-21T09:00:00',
-    status: 'Automático',
-    zone: 'Zona 3',
-    duration: '00:10:00',
-    favorite: false,
-  },
-  {
-    id: '4',
-    date: '2025-06-21T10:00:00',
-    status: 'Concluído',
-    zone: 'Zona 1',
-    duration: '00:12:00',
-    favorite: true,
-  },
-  {
-    id: '5',
-    date: '2025-06-18T11:00:00',
-    status: '70% Umidade',
-    zone: 'Zona 2',
-    duration: '00:05:00',
-    favorite: false,
-  },
-];
-
-const FilterGroup = ({
-  options,
-  selected,
-  blacklist,
-  onToggleSelected,
-  onToggleBlacklist,
-}: {
-  options: string[];
-  selected: string[];
-  blacklist: string[];
-  onToggleSelected: (item: string) => void;
-  onToggleBlacklist: (item: string) => void;
-}) => (
-  <ScrollView
-    horizontal
-    showsHorizontalScrollIndicator={false}
-    style={styles.checkboxRow}>
-    {options.map(status => {
-      const isChecked = selected.includes(status);
-      const isBlacklisted = blacklist.includes(status);
-      return (
-        <View key={status} style={styles.checkboxWrapper}>
-          <TouchableOpacity
-            style={[styles.checkbox, isChecked && styles.checkboxChecked]}
-            onPress={() => onToggleSelected(status)}>
-            <Text>{status}</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    })}
-  </ScrollView>
-);
-
-const HistoryScreen = () => {
-  const { zones } = useZones();
-  const [selectedPeriod, setSelectedPeriod] = useState<Period>('7');
-  const [statusFilters, setStatusFilters] = useState<string[]>([]);
-  const [blacklistFilters, setBlacklistFilters] = useState<string[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [theme, setTheme] = useState(Appearance.getColorScheme());
-  const [history, setHistory] = useState<HistoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
-  const [nextEventCountdown, setNextEventCountdown] = useState<string>('');
-
-  const screenWidth = Dimensions.get('window').width - 32;
+const HistoryScreen: React.FC = () => {
+  const [events, setEvents] = useState<IrrigationEvent[]>([]);
+  const [filteredEvents, setFilteredEvents] = useState<IrrigationEvent[]>([]);
+  const [filters, setFilters] = useState<FilterOptions>({
+    date: '',
+    zone: 'all',
+    type: 'all',
+    searchTerm: ''
+  });
+  const [showChart, setShowChart] = useState<boolean>(false);
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const savedFilters = await AsyncStorage.getItem('statusFilters');
-        if (savedFilters) setStatusFilters(JSON.parse(savedFilters));
-
-        const savedBlacklist = await AsyncStorage.getItem('blacklistFilters');
-        if (savedBlacklist) setBlacklistFilters(JSON.parse(savedBlacklist));
-
-        const savedHistory = await AsyncStorage.getItem('historyItems');
-        if (savedHistory) {
-          setHistory(JSON.parse(savedHistory));
-        } else {
-          setHistory(dummyHistory);
-          await AsyncStorage.setItem(
-            'historyItems',
-            JSON.stringify(dummyHistory),
-          );
-        }
-      } catch (e) {
-        console.error('Erro ao carregar dados', e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
+    const sampleEvents: IrrigationEvent[] = [
+      {
+        id: '1',
+        date: '15/07/2025',
+        time: '08:00',
+        type: 'automático',
+        action: 'Irrigação iniciada',
+        duration: '20 min',
+        zones: ['Zona 1', 'Zona 2'],
+        source: 'Automático',
+        humidity: '24%',
+        weather: 'Ensolarado',
+        status: 'success'
+      },
+      {
+        id: '2',
+        date: '15/07/2025',
+        time: '08:20',
+        type: 'automático',
+        action: 'Irrigação concluída',
+        duration: '20 min',
+        zones: ['Zona 1', 'Zona 2'],
+        source: 'Automático',
+        humidity: '42%',
+        weather: 'Ensolarado',
+        status: 'success'
+      },
+      {
+        id: '3',
+        date: '14/07/2025',
+        time: '07:30',
+        type: 'manual',
+        action: 'Irrigação manual iniciada',
+        duration: '15 min',
+        zones: ['Zona 3'],
+        source: 'Manual',
+        humidity: '28%',
+        weather: 'Nublado',
+        status: 'success'
+      },
+      {
+        id: '4',
+        date: '14/07/2025',
+        time: '18:45',
+        type: 'falha',
+        action: 'Falha na irrigação',
+        duration: '0 min',
+        zones: ['Zona 1'],
+        source: 'Automático',
+        humidity: '22%',
+        weather: 'Chuvoso',
+        status: 'error'
+      },
+    ];
+    setEvents(sampleEvents);
+    setFilteredEvents(sampleEvents);
   }, []);
 
-  const saveHistory = async (newHistory: HistoryItem[]) => {
-    setHistory(newHistory);
-    await AsyncStorage.setItem('historyItems', JSON.stringify(newHistory));
+  useEffect(() => {
+    let result = [...events];
+    
+    if (filters.date) {
+      result = result.filter(event => event.date === filters.date);
+    }
+    
+    if (filters.zone !== 'all') {
+      result = result.filter(event => event.zones.includes(filters.zone));
+    }
+    
+    if (filters.type !== 'all') {
+      result = result.filter(event => event.type === filters.type);
+    }
+    
+    if (filters.searchTerm) {
+      const term = filters.searchTerm.toLowerCase();
+      result = result.filter(event => 
+        event.action.toLowerCase().includes(term) || 
+        event.zones.some(zone => zone.toLowerCase().includes(term)) ||
+        event.source.toLowerCase().includes(term) ||
+        event.weather.toLowerCase().includes(term)
+      );
+    }
+    
+    setFilteredEvents(result);
+  }, [filters, events]);
+
+  const handleFilterChange = (name: keyof FilterOptions, value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
-  const toggleSetItem = async (
-    item: string,
-    set: string[],
-    setter: (s: string[]) => void,
-    key: string,
-  ) => {
-    const newSet = set.includes(item)
-      ? set.filter(s => s !== item)
-      : [...set, item];
-    setter(newSet);
-    await AsyncStorage.setItem(key, JSON.stringify(newSet));
-  };
+  const zones = ['all', 'Zona 1', 'Zona 2', 'Zona 3'];
+  const eventTypes = ['all', 'automático', 'manual', 'falha', 'notificação'];
 
-  const toggleFavorite = async (id: string) => {
-    const newHistory = history.map(item =>
-      item.id === id ? {...item, favorite: !item.favorite} : item,
-    );
-    await saveHistory(newHistory);
-  };
-
-  const toggleSelectItem = (id: string) => {
-    const newSelected = new Set(selectedItems);
-    newSelected.has(id) ? newSelected.delete(id) : newSelected.add(id);
-    setSelectedItems(newSelected);
-  };
-
-  const filteredHistory = history.filter(item => {
-    const itemDate = new Date(item.date);
-    const now = new Date();
-    const daysAgo = selectedPeriod === '7' ? 7 : 30;
-    if ((now.getTime() - itemDate.getTime()) / (1000 * 60 * 60 * 24) > daysAgo)
-      return false;
-    if (blacklistFilters.includes(item.status)) return false;
-    if (statusFilters.length > 0 && !statusFilters.includes(item.status))
-      return false;
-    if (
-      !item.zone.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      !item.status.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-      return false;
-    return true;
-  });
-
-  const chartConfig = {
-    backgroundGradientFrom: '#fff',
-    backgroundGradientTo: '#fff',
-    decimalPlaces: 0,
-    color: (opacity = 1) => `rgba(0, 203, 33, ${opacity})`,
-    labelColor: () => '#333',
-  };
-
-  const barChartData = {
-    labels: STATUS_OPTIONS,
+  const chartData = {
+    labels: ['10/07', '11/07', '12/07', '13/07', '14/07', '15/07', '16/07'],
     datasets: [
       {
-        data: STATUS_OPTIONS.map(
-          status =>
-            filteredHistory.filter(item => item.status === status).length,
-        ),
-      },
-    ],
-  };
-
-  const dailyCount: {[key: string]: number} = {};
-  filteredHistory.forEach(item => {
-    const date = new Date(item.date).toLocaleDateString();
-    dailyCount[date] = (dailyCount[date] || 0) + 1;
-  });
-
-  const lineChartData = {
-    labels: Object.keys(dailyCount),
-    datasets: [{data: Object.values(dailyCount)}],
-  };
-
-  const pieChartData = STATUS_OPTIONS.map((status, i) => ({
-    name: status,
-    population: filteredHistory.filter(item => item.status === status).length,
-    color: ['#00CB21', '#FF0000', '#007AFF', '#FFA500'][i],
-    legendFontColor: '#333',
-    legendFontSize: 12,
-  })).filter(p => p.population > 0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const now = new Date();
-      const futureEvents = history
-        .map(i => new Date(i.date))
-        .filter(d => d > now)
-        .sort((a, b) => a.getTime() - b.getTime());
-      if (futureEvents.length === 0) {
-        setNextEventCountdown('Nenhum evento futuro');
-        return;
+        data: [15, 30, 20, 25, 35, 40, 20]
       }
-      const diff = futureEvents[0].getTime() - now.getTime();
-      const h = Math.floor(diff / (1000 * 60 * 60));
-      const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const s = Math.floor((diff % (1000 * 60)) / 1000);
-      setNextEventCountdown(`${h}h ${m}m ${s}s`);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [history]);
+    ]
+  };
 
-  if (loading) {
-    return (
-      <View style={[styles.container, styles.center]}>
-        <ActivityIndicator size="large" color="#00CB21" />
+  const renderEventIcon = (type: IrrigationEvent['type']) => {
+    switch(type) {
+      case 'automático':
+        return <Icon name="autorenew" size={20} color="#4CAF50" />;
+      case 'manual':
+        return <Icon name="touch-app" size={20} color="#2196F3" />;
+      case 'falha':
+        return <Icon name="error" size={20} color="#F44336" />;
+      case 'notificação':
+        return <Icon name="notifications" size={20} color="#FFC107" />;
+      default:
+        return <Icon name="info" size={20} color="#9E9E9E" />;
+    }
+  };
+
+  const renderWeatherIcon = (weather: string) => {
+    if (weather.includes('Ensolarado')) return <Icon name="wb-sunny" size={20} color="#FFC107" />;
+    if (weather.includes('Nublado')) return <Icon name="cloud" size={20} color="#9E9E9E" />;
+    if (weather.includes('Chuvoso')) return <Icon name="grain" size={20} color="#2196F3" />;
+    return <Icon name="wb-cloudy" size={20} color="#607D8B" />;
+  };
+
+  const renderItem = ({ item }: { item: IrrigationEvent }) => (
+    <View style={[styles.eventItem, item.status === 'error' && styles.errorItem]}>
+      <View style={styles.eventHeader}>
+        {renderEventIcon(item.type)}
+        <Text style={styles.eventDateTime}>{item.date} - {item.time}</Text>
+        {renderWeatherIcon(item.weather)}
       </View>
-    );
-  }
+      <Text style={styles.eventAction}>{item.action}</Text>
+      <View style={styles.eventDetails}>
+        <Text style={styles.eventDetail}>Zonas: {item.zones.join(', ')}</Text>
+        <Text style={styles.eventDetail}>Duração: {item.duration}</Text>
+      </View>
+      <View style={styles.eventDetails}>
+        <Text style={styles.eventDetail}>Umidade: {item.humidity}</Text>
+        <Text style={styles.eventDetail}>Clima: {item.weather}</Text>
+      </View>
+      <Text style={styles.eventSource}>Acionamento: {item.source}</Text>
+    </View>
+  );
 
   return (
-    <ScrollView>
-      <View
-        style={[
-          styles.container,
-          theme === 'dark' && {backgroundColor: '#000'},
-        ]}>
-        <View style={styles.header}>
-          <Text style={[styles.title, theme === 'dark' && {color: '#fff'}]}>
-            Histórico
-          </Text>
-          <Ionicons
-            name="time-outline"
-            size={24}
-            color={theme === 'dark' ? '#fff' : '#000'}
+    <View style={styles.container}>
+      <ScrollView>
+        {/* Filtros */}
+        <View style={styles.filterContainer}>
+          <Text style={styles.sectionTitle}>Filtros</Text>
+          
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Buscar por palavra-chave..."
+            value={filters.searchTerm}
+            onChangeText={(text) => handleFilterChange('searchTerm', text)}
           />
+          
+          <View style={styles.pickerRow}>
+            <Picker
+              selectedValue={filters.date}
+              style={styles.picker}
+              onValueChange={(itemValue) => handleFilterChange('date', itemValue)}>
+              <Picker.Item label="Todas as datas" value="" />
+              <Picker.Item label="15/07/2025" value="15/07/2025" />
+              <Picker.Item label="14/07/2025" value="14/07/2025" />
+            </Picker>
+            
+            <Picker
+              selectedValue={filters.zone}
+              style={styles.picker}
+              onValueChange={(itemValue) => handleFilterChange('zone', itemValue)}>
+              {zones.map(zone => (
+                <Picker.Item key={zone} label={zone === 'all' ? 'Todas as zonas' : zone} value={zone} />
+              ))}
+            </Picker>
+          </View>
+          
+          <Picker
+            selectedValue={filters.type}
+            style={styles.picker}
+            onValueChange={(itemValue) => handleFilterChange('type', itemValue)}>
+            {eventTypes.map(type => (
+              <Picker.Item 
+                key={type} 
+                label={
+                  type === 'all' ? 'Todos os tipos' : 
+                  type === 'automático' ? 'Automáticos' :
+                  type === 'manual' ? 'Manuais' :
+                  type === 'falha' ? 'Falhas' : 'Notificações'
+                } 
+                value={type} 
+              />
+            ))}
+          </Picker>
         </View>
 
-        <TextInput
-          placeholder="Buscar por zona ou status"
-          style={styles.searchInput}
-          value={searchTerm}
-          onChangeText={setSearchTerm}
-        />
+        <TouchableOpacity 
+          style={styles.toggleChartButton}
+          onPress={() => setShowChart(!showChart)}>
+          <Text>{showChart ? 'Ocultar gráfico' : 'Mostrar gráfico de análise'}</Text>
+          <Icon name={showChart ? "keyboard-arrow-up" : "keyboard-arrow-down"} size={20} />
+        </TouchableOpacity>
 
-        <View style={styles.filterRow}>
-          {PERIOD_OPTIONS.map(period => (
-            <TouchableOpacity
-              key={period}
-              style={[
-                styles.filterBtn,
-                selectedPeriod === period && styles.filterBtnSelected,
-              ]}
-              onPress={() => setSelectedPeriod(period)}>
-              <Text
-                style={[
-                  styles.filterText,
-                  selectedPeriod === period && styles.filterTextSelected,
-                ]}>
-                {period} dias
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {showChart && (
+          <View style={styles.chartContainer}>
+            <Text style={styles.chartTitle}>Minutos de irrigação por dia</Text>
+            <BarChart
+              data={chartData}
+              width={Dimensions.get('window').width - 40}
+              height={220}
+              yAxisLabel=""
+              yAxisSuffix=" min"
+              chartConfig={{
+                backgroundColor: '#ffffff',
+                backgroundGradientFrom: '#ffffff',
+                backgroundGradientTo: '#ffffff',
+                decimalPlaces: 0,
+                color: (opacity = 1) => `rgba(33, 150, 243, ${opacity})`,
+                labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+              }}
+              style={styles.chart}
+            />
+          </View>
+        )}
 
-        <FilterGroup
-          options={STATUS_OPTIONS}
-          selected={statusFilters}
-          blacklist={blacklistFilters}
-          onToggleSelected={status =>
-            toggleSetItem(
-              status,
-              statusFilters,
-              setStatusFilters,
-              'statusFilters',
-            )
-          }
-          onToggleBlacklist={status =>
-            toggleSetItem(
-              status,
-              blacklistFilters,
-              setBlacklistFilters,
-              'blacklistFilters',
-            )
-          }
-        />
-
-        <Text style={{marginBottom: 8}}>
-          Próximo evento em: {nextEventCountdown}
+        <Text style={styles.sectionTitle}>
+          Eventos ({filteredEvents.length})
         </Text>
-
-        <BarChart
-          data={barChartData}
-          width={screenWidth}
-          height={220}
-          chartConfig={chartConfig}
-          fromZero
-          yAxisLabel=""
-          yAxisSuffix=""
-          style={{marginVertical: 8, borderRadius: 16}}
-        />
-        {lineChartData.labels.length > 0 && (
-          <LineChart
-            data={lineChartData}
-            width={screenWidth}
-            height={220}
-            chartConfig={chartConfig}
-            style={{marginVertical: 8, borderRadius: 16}}
+        
+        {filteredEvents.length > 0 ? (
+          <FlatList
+            data={filteredEvents}
+            renderItem={renderItem}
+            keyExtractor={(item) => item.id}
+            scrollEnabled={false}
           />
-        )}
-        {pieChartData.length > 0 && (
-          <PieChart
-            data={pieChartData}
-            width={screenWidth}
-            height={220}
-            accessor="population"
-            backgroundColor="transparent"
-            paddingLeft="8"
-            chartConfig={chartConfig}
-          />
+        ) : (
+          <Text style={styles.noResults}>Nenhum evento encontrado com os filtros atuais.</Text>
         )}
 
-        {filteredHistory.map(item => {
-          const zoneName = zones?.find(z => z.id === item.zone)?.name || item.zone;
-          return (
-            <View key={item.id} style={{marginBottom: 12}}>
-              <Text style={{fontWeight: 'bold'}}>{zoneName}</Text>
-              <Text>Status: {item.status}</Text>
-              <Text>Duração: {item.duration}</Text>
-              <Text>Data: {new Date(item.date).toLocaleString()}</Text>
-            </View>
-          );
-        })}
-      </View>
-    </ScrollView>
+        <TouchableOpacity style={styles.exportButton}>
+          <Icon name="file-download" size={20} color="#FFFFFF" />
+          <Text style={styles.exportButtonText}>Exportar Histórico (CSV)</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {flex: 1, backgroundColor: '#000000', padding: 16},
-  center: {justifyContent: 'center', alignItems: 'center'},
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+    padding: 10,
   },
-  title: {fontSize: 22, fontWeight: 'bold'},
+  filterContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 15,
+    marginBottom: 10,
+    elevation: 2,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
   searchInput: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    marginBottom: 12,
     height: 40,
-  },
-  filterRow: {flexDirection: 'row', marginBottom: 12},
-  filterBtn: {
-    backgroundColor: '#EEE',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    marginRight: 8,
-  },
-  filterBtnSelected: {backgroundColor: '#00CB21'},
-  filterText: {color: '#000'},
-  filterTextSelected: {color: '#fff', fontWeight: 'bold'},
-  checkboxRow: {flexDirection: 'row', marginBottom: 10},
-  checkbox: {
+    borderColor: '#DDD',
     borderWidth: 1,
-    borderColor: '#ccc',
     borderRadius: 8,
-    padding: 4,
-    marginRight: 4,
-    backgroundColor: '#fff',
+    paddingHorizontal: 10,
+    marginBottom: 10,
+    backgroundColor: '#FFF',
   },
-  checkboxChecked: {backgroundColor: '#00CB21'},
-  checkboxBlacklisted: {backgroundColor: '#FFCCCC'},
-  summaryContainer: {
+  pickerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 10,
   },
-  summaryBox: {alignItems: 'center'},
-  summaryValue: {fontSize: 18, fontWeight: 'bold'},
-  summaryLabel: {fontSize: 12, color: '#888'},
-
-  checkboxWrapper: {
-    flexDirection: 'column',
+  picker: {
+    flex: 1,
+    height: 50,
+  },
+  toggleChartButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginRight: 18,
+    backgroundColor: '#FFFFFF',
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 10,
+    elevation: 2,
+  },
+  chartContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 15,
+    marginBottom: 10,
+    elevation: 2,
+  },
+  chartTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  chart: {
+    borderRadius: 8,
+  },
+  eventItem: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 15,
+    marginBottom: 10,
+    elevation: 2,
+  },
+  errorItem: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#F44336',
+  },
+  eventHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  eventDateTime: {
+    marginLeft: 8,
+    marginRight: 'auto',
+    fontSize: 14,
+    color: '#666',
+  },
+  eventAction: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+    color: '#333',
+  },
+  eventDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 5,
+  },
+  eventDetail: {
+    fontSize: 14,
+    color: '#555',
+  },
+  eventSource: {
+    fontSize: 14,
+    color: '#777',
+    marginTop: 5,
+    fontStyle: 'italic',
+  },
+  noResults: {
+    textAlign: 'center',
+    marginVertical: 20,
+    color: '#777',
+  },
+  exportButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#4CAF50',
+    padding: 15,
+    borderRadius: 8,
+    marginTop: 10,
+    elevation: 2,
+  },
+  exportButtonText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    marginLeft: 10,
   },
 });
 
