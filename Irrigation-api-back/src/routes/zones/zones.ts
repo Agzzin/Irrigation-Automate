@@ -134,16 +134,18 @@ router.delete('/:id', async (req, res) => {
   try {
     const zone = await prisma.zone.findUnique({ where: { id } });
     if (!zone) {
-      res.status(404).json({ error: 'Zona não encontrada' });
-      return;
+      return res.status(404).json({ error: 'Zona não encontrada' });
     }
-
-    await prisma.schedule.delete({ where: { id: zone.scheduleId } });
+    
     await prisma.zone.delete({ where: { id } });
+
+    if (zone.scheduleId) {
+      await prisma.schedule.delete({ where: { id: zone.scheduleId } });
+    }
 
     res.status(204).send();
   } catch (error) {
-    console.error(error);
+    console.error('Erro ao deletar zona:', error);
     res.status(500).json({ error: 'Erro ao deletar zona' });
   }
 });

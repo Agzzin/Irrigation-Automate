@@ -7,7 +7,6 @@ import usuarioRouter from './routes/usuario';
 import authResetRoutes from '../src/middlewares/reset-password';
 import { authRoutes } from './middlewares/auth'
 import zonesRouter from './routes/zones/zones';
-import bodyParser from 'body-parser';
 
 
 const app = express();
@@ -15,12 +14,11 @@ const prisma = new PrismaClient();
 
 app.use(cors());
 app.use(express.json());
-
 app.use('/auth', authRoutes);
 app.use('/auth', authResetRoutes);
 app.use('/bombas', bombaRouter);         
 app.use('/usuarios', usuarioRouter);  
-app.use('/api/zones', zonesRouter);    
+app.use('/api/zones', zonesRouter);
 
 const PORT = Number(process.env.PORT) || 3000;
 app.listen(PORT, () => {
