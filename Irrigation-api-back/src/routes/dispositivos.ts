@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { prisma } from '../prismaClient';
-import { auth } from '../middlewares/auth';
+import { authRoutes } from '../middlewares/auth';
 
 const router = Router();
 
-router.get('/', auth, async (req, res) => {
+router.get('/', authRoutes , async (req, res) => {
   try {
     const dispositivos = await prisma.dispositivo.findMany({
   where: {
@@ -22,7 +22,7 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-router.post('/', auth, async (req, res) => {
+router.post('/', authRoutes, async (req, res) => {
   try {
     const novo = await prisma.dispositivo.create({
       data: {

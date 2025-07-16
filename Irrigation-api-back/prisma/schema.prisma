@@ -14,15 +14,15 @@ model Tenant {
 }
 
 model Usuario {
-  id         Int      @id @default(autoincrement())
-  nome       String   @db.VarChar(100)
-  email      String   @unique @db.VarChar(100)
-  googleId   String?  @unique
-  facebookId String?  @unique
-  telefone   String?  @db.VarChar(20)
-  senha      String?  @db.VarChar(255)
-  tenantId   Int?                     
-  tenant     Tenant?  @relation(fields: [tenantId], references: [id])
+  id                  Int                  @id @default(autoincrement())
+  nome                String               @db.VarChar(100)
+  email               String               @unique @db.VarChar(100)
+  googleId            String?              @unique
+  facebookId          String?              @unique
+  telefone            String?              @db.VarChar(20)
+  senha               String?              @db.VarChar(255)
+  tenantId            Int?
+  tenant              Tenant?              @relation(fields: [tenantId], references: [id])
   bombas              Bomba[]
   leituras            Leitura[]
   passwordResetTokens PasswordResetToken[]
@@ -65,24 +65,50 @@ model Dispositivo {
 }
 
 model Zone {
-  id             String   @id @default(uuid())
+  id             String    @id @default(uuid())
   name           String
-  status         String   // 'active', 'inactive', 'error'
+  status         String // 'active', 'inactive', 'error'
   flowRate       Float
   pressure       Float
   emitterCount   Int
   emitterSpacing Int
   lastWatered    DateTime?
   nextWatering   DateTime?
-  scheduleId     String   @unique
-  schedule       Schedule @relation(fields: [scheduleId], references: [id])
+  scheduleId     String    @unique
+  schedule       Schedule  @relation(fields: [scheduleId], references: [id])
+
+  historyEvents ZoneOnHistoryEvent[] // relação N:N
 }
 
-
 model Schedule {
-  id        String   @id @default(cuid())
+  id        String @id @default(cuid())
   duration  Int
-  frequency String   // 'daily', 'weekly', 'custom'
-  days      Int[]    // Dias da semana, caso seja customizado
+  frequency String // 'daily', 'weekly', 'custom'
+  days      Int[] // Dias da semana, caso seja customizado
   zone      Zone?
+}
+
+model HistoryEvent {
+  id          String   @id @default(uuid())
+  eventType   String // "irrigação", "falha", "alerta", etc.
+  action      String // Descrição do evento
+  duration    Int? // Duração em minutos (se aplicável)
+  humidity    Float? // Umidade registrada
+  temperature Float? // Temperatura registrada
+  weather     String? // Condição climática
+  source      String // "manual", "automático", "agendamento"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  zones ZoneOnHistoryEvent[] // relação N:N
+}
+
+model ZoneOnHistoryEvent {
+  historyEventId String
+  zoneId         String
+
+  historyEvent HistoryEvent @relation(fields: [historyEventId], references: [id])
+  zone         Zone         @relation(fields: [zoneId], references: [id])
+
+  @@id([historyEventId, zoneId])
 }

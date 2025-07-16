@@ -4,7 +4,6 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 const router = Router();
 
-
 router.get('/', async (_req, res) => {
   try {
     const zones = await prisma.zone.findMany({ include: { schedule: true } });
@@ -136,7 +135,7 @@ router.delete('/:id', async (req, res) => {
     if (!zone) {
       return res.status(404).json({ error: 'Zona não encontrada' });
     }
-    
+
     await prisma.zone.delete({ where: { id } });
 
     if (zone.scheduleId) {
@@ -147,6 +146,77 @@ router.delete('/:id', async (req, res) => {
   } catch (error) {
     console.error('Erro ao deletar zona:', error);
     res.status(500).json({ error: 'Erro ao deletar zona' });
+  }
+});
+
+router.get('/:id/history', async (req, res) => {
+  const { id } = req.params;
+  const { startDate, endDate, eventType } = req.query;
+
+  try {
+    const where = {
+      zones: id !== 'all' ? { some: { zoneId: id } } : undefined,
+      createdAt: {
+        gte: startDate ? new Date(startDate as string) : undefined,
+        lte: endDate ? new Date(endDate as string) : undefined,
+      },
+      eventType: eventType ? (eventType as string) : undefined,
+    };
+
+    const history = await prisma.historyEvent.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: { zones: true },
+    });
+
+    res.json(history);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao buscar histórico' });
+  }
+});
+
+router.post('/:id/history', async (req, res) => {
+  const { id } = req.params;
+  const {
+    eventType,
+    action,
+    duration,
+    humidity,
+    temperature,
+    weather,
+    source,
+  } = req.body;
+
+  try {
+    const newEvent = await prisma.historyEvent.create({
+      data: {
+        eventType,
+        action,
+        duration,
+        humidity,
+        temperature,
+        weather,
+        source,
+      },
+    });
+
+    await prisma.zoneOnHistoryEvent.create({
+      data: {
+        zoneId: id,
+        historyEventId: newEvent.id,
+      },
+    });
+
+    const createdWithZones = await prisma.historyEvent.findUnique({
+      where: { id: newEvent.id },
+      include: { zones: true },
+    });
+
+    res.status(201).json(createdWithZones);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao registrar evento' });
   }
 });
 
