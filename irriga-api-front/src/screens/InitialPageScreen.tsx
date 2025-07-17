@@ -19,7 +19,6 @@ import CloudSun from '../../assets/icons/cloud-sun.svg';
 import Thermometer from '../../assets/icons/thermometer-half.svg';
 import Power from '../../assets/icons/power.svg';
 import Water from '../../assets/icons/water.svg';
-import { DripZone } from '../screens/ZonesScreen';
 
 import { useZones } from '../contexts/ZonesContext';
 

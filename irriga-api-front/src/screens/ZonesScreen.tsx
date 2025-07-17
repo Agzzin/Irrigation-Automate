@@ -10,10 +10,10 @@ import {
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import ZoneModal from './ZoneModal';
+import ZoneModal from '../modal/ZoneModal';
 import {useZones} from '../contexts/ZonesContext';
 
-type DripZone = {
+export type DripZone = {
   id: string;
   name: string;
   status: 'active' | 'inactive' | 'error';
@@ -83,8 +83,8 @@ const DripZonesScreen = () => {
               frequency: z.schedule?.frequency ?? 'daily',
               days: z.schedule?.days ?? [],
             },
-          })),
-        );
+          }),
+        ));
       }
     }
   };
@@ -106,25 +106,24 @@ const DripZonesScreen = () => {
     saveZones(localZones);
   }, [localZones]);
 
- const toggleZone = (zoneId: string) => {
-  setLocalZones(prev =>
-    prev.map(zone => {
-      if (zone.id === zoneId) {
-        // Função para garantir o tipo literal
-        const toggleStatus = (status: 'active' | 'inactive' | 'error'): 'active' | 'inactive' => {
-          return status === 'active' ? 'inactive' : 'active';
-        };
+  const toggleZone = (zoneId: string) => {
+    setLocalZones(prev =>
+      prev.map(zone => {
+        if (zone.id === zoneId) {
+          const toggleStatus = (status: 'active' | 'inactive' | 'error'): 'active' | 'inactive' => {
+            return status === 'active' ? 'inactive' : 'active';
+          };
 
-        const newStatus = toggleStatus(zone.status);
+          const newStatus = toggleStatus(zone.status);
 
-        const updatedZone = {...zone, status: newStatus};
-        toggleZoneStatus(updatedZone);
-        return updatedZone;
-      }
-      return zone;
-    }),
-  );
-};
+          const updatedZone = {...zone, status: newStatus};
+          toggleZoneStatus(updatedZone);
+          return updatedZone;
+        }
+        return zone;
+      }),
+    );
+  };
 
   const deleteZone = (zoneId: string) => {
     Alert.alert(
@@ -144,10 +143,13 @@ const DripZonesScreen = () => {
     );
   };
 
+  const formatDays = (days: number[]) => {
+    const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    return days.map(day => dayNames[day]).join('/');
+  };
+
   if (isLoading) return <Text>Carregando zonas...</Text>;
   if (error) return <Text>Erro ao carregar zonas</Text>;
-
-  const dripZones: DripZone[] = localZones;
 
   const renderZoneItem = ({item}: {item: DripZone}) => (
     <View style={styles.zoneCard}>
@@ -194,7 +196,9 @@ const DripZonesScreen = () => {
         <Text style={styles.scheduleText}>
           {item.schedule.frequency === 'daily'
             ? `Diário - ${item.schedule.duration}min`
-            : `Seg/Qua/Sex - ${item.schedule.duration}min`}
+            : item.schedule.frequency === 'weekly' && item.schedule.days?.length
+              ? `${formatDays(item.schedule.days)} - ${item.schedule.duration}min`
+              : `Personalizado - ${item.schedule.duration}min`}
         </Text>
       </View>
 
@@ -230,7 +234,7 @@ const DripZonesScreen = () => {
       <Text style={styles.title}>Zonas de Gotejamento</Text>
 
       <FlatList
-        data={dripZones}
+        data={localZones}
         renderItem={renderZoneItem}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContent}
@@ -260,7 +264,7 @@ const DripZonesScreen = () => {
               status: zone.status || 'inactive',
             };
             const response = await fetch(
-              'https://a8b45f7f153d.ngrok-free.app/api/zones',
+              'https://c6579a4c806f.ngrok-free.app/api/zones',
               {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -291,130 +295,132 @@ const DripZonesScreen = () => {
     </View>
   );
 };
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
-    padding: 16,
+    padding: 15,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 16,
+    marginBottom: 20,
+    color: '#296C32',
+    textAlign: 'center',
   },
   listContent: {
     paddingBottom: 80,
   },
   zoneCard: {
-    backgroundColor: 'white',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 15,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 3,
   },
   zoneHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   zoneName: {
     fontSize: 18,
     fontWeight: '600',
-    marginLeft: 8,
+    marginLeft: 10,
     flex: 1,
   },
   statusBadge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: '#e0e0e0',
   },
   statusActive: {
-    backgroundColor: '#C8E6C9',
+    backgroundColor: '#c8e6c9',
   },
   statusError: {
-    backgroundColor: '#FFEBEE',
+    backgroundColor: '#ffcdd2',
   },
   statusText: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#424242',
   },
   zoneSpecs: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 12,
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
   specItem: {
-    width: '50%',
-    marginBottom: 8,
+    flex: 1,
   },
   specLabel: {
-    fontSize: 14,
-    color: '#757575',
+    fontSize: 12,
+    color: '#666',
   },
   specValue: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
   },
   zoneSchedule: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   scheduleText: {
     marginLeft: 8,
     fontSize: 14,
-    color: '#424242',
+    color: '#333',
   },
   zoneActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: 10,
   },
   actionButton: {
     flex: 1,
-    padding: 10,
-    borderRadius: 4,
+    padding: 8,
+    borderRadius: 6,
+    backgroundColor: '#f0f0f0',
     alignItems: 'center',
-    backgroundColor: '#E0E0E0',
     marginHorizontal: 4,
   },
   editButton: {
-    backgroundColor: '#296C32',
+    backgroundColor: '#4CAF50',
   },
   deleteButton: {
-    backgroundColor: '#FFCDD2',
+    backgroundColor: '#ffebee',
   },
   actionButtonText: {
+    fontSize: 14,
     fontWeight: '500',
   },
   addButton: {
     position: 'absolute',
-    bottom: 24,
-    right: 24,
-    backgroundColor: '#296C32',
-    borderRadius: 50,
-    width: 75,
-    height: 75,
-    alignItems: 'center',
+    bottom: 20,
+    right: 20,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#4CAF50',
     justifyContent: 'center',
-    flexDirection: 'row',
+    alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
-    elevation: 4,
+    elevation: 5,
   },
   addButtonText: {
-    color: 'white',
+    color: '#fff',
     fontWeight: 'bold',
+    textAlign: 'center',
+    fontSize: 14,
   },
 });
 
 export default DripZonesScreen;
-export type {DripZone};

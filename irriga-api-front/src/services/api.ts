@@ -4,7 +4,7 @@ import { Zone, HistoryEvent } from '../types/history';
 const createApiService = () => {
   const { token } = useAuth();
 
-  const apiBaseUrl = 'http://SUA_URL_API'; 
+  const apiBaseUrl = 'https://c6579a4c806f.ngrok-free.app'; 
 
   const authFetch = async (endpoint: string, options: RequestInit = {}) => {
     const url = `${apiBaseUrl}${endpoint}`;
