@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Modal } from 'react-native';
-import { DripZone } from './ZonesScreen';
+import { DripZone } from '../screens/ZonesScreen';
+import { useState, useEffect } from 'react';
 
 interface ZoneModalProps {
   visible: boolean;
@@ -9,11 +10,55 @@ interface ZoneModalProps {
   setCurrentZone: React.Dispatch<React.SetStateAction<DripZone | null>>;
   onSave: (zone: DripZone) => void;
 }
-
 const ZoneModal: React.FC<ZoneModalProps> = ({ visible, onClose, currentZone, setCurrentZone, onSave }) => {
+  const [selectedDays, setSelectedDays] = useState<number[]>(currentZone?.schedule.days || []);
+
+  const weekDays = [
+    { id: 1, name: 'Seg' },
+    { id: 2, name: 'Ter' },
+    { id: 3, name: 'Qua' },
+    { id: 4, name: 'Qui' },
+    { id: 5, name: 'Sex' },
+    { id: 6, name: 'Sáb' },
+    { id: 0, name: 'Dom' },
+  ];
+
+  useEffect(() => {
+    if (currentZone) {
+      setSelectedDays(currentZone.schedule.days || []);
+    } else {
+      setCurrentZone({
+        id: Date.now().toString(),
+        name: '',
+        status: 'inactive',
+        flowRate: 0,
+        pressure: 0,
+        emitterCount: 0,
+        emitterSpacing: 0,
+        schedule: {
+          duration: 0,
+          frequency: 'daily',
+          days: []
+        }
+      });
+      setSelectedDays([]);
+    }
+  }, [currentZone]);
+
+  const toggleDay = (dayId: number) => {
+    setSelectedDays(prev => {
+      if (prev.includes(dayId)) {
+        return prev.filter(id => id !== dayId);
+      } else {
+        return [...prev, dayId];
+      }
+    });
+  };
 
   function isFormValid(zone: DripZone | null): boolean {
     if (!zone) return false;
+    
+   
     if (!zone.name || zone.name.trim() === '') return false;
     if (!zone.flowRate || zone.flowRate <= 0) return false;
     if (!zone.pressure || zone.pressure <= 0) return false;
@@ -21,11 +66,37 @@ const ZoneModal: React.FC<ZoneModalProps> = ({ visible, onClose, currentZone, se
     if (!zone.emitterSpacing || zone.emitterSpacing <= 0) return false;
     if (!zone.schedule) return false;
     if (!zone.schedule.duration || zone.schedule.duration <= 0) return false;
-    if (!zone.schedule.frequency) return false;
+    
+
+    if (zone.schedule.frequency === 'weekly' && selectedDays.length === 0) {
+      return false;
+    }
+    
     return true;
   }
 
   const formIsValid = isFormValid(currentZone);
+
+  const handleSave = () => {
+    if (!currentZone) return;
+    
+    const updatedZone: DripZone = {
+      ...currentZone,
+      status: currentZone.status || 'inactive', 
+      schedule: {
+        ...currentZone.schedule,
+        days: selectedDays,
+        frequency: currentZone.schedule.frequency
+      },
+      ...(currentZone.lastWatered && { lastWatered: currentZone.lastWatered }),
+      ...(currentZone.nextWatering && { nextWatering: currentZone.nextWatering })
+    };
+    
+    if (isFormValid(updatedZone)) {
+      onSave(updatedZone);
+      onClose();
+    }
+  };
 
   return (
     <Modal
@@ -148,15 +219,35 @@ const ZoneModal: React.FC<ZoneModalProps> = ({ visible, onClose, currentZone, se
               ))}
             </View>
           </View>
+          {currentZone?.schedule?.frequency === 'weekly' && (
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Dias da Semana</Text>
+              <View style={styles.daysContainer}>
+                {weekDays.map(day => (
+                  <TouchableOpacity
+                    key={day.id}
+                    style={[
+                      styles.dayButton,
+                      selectedDays.includes(day.id) && styles.dayButtonSelected
+                    ]}
+                    onPress={() => toggleDay(day.id)}
+                  >
+                    <Text style={[
+                      styles.dayButtonText,
+                      selectedDays.includes(day.id) && styles.dayButtonTextSelected
+                    ]}>
+                      {day.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
         </View>
 
         <TouchableOpacity
           style={[styles.saveButton, !formIsValid && styles.saveButtonDisabled]}
-          onPress={() => {
-            if (currentZone && formIsValid) {
-              onSave(currentZone);
-            }
-          }}
+          onPress={handleSave}
           disabled={!formIsValid}
         >
           <Text style={styles.saveButtonText}>Salvar Configurações</Text>
@@ -165,6 +256,7 @@ const ZoneModal: React.FC<ZoneModalProps> = ({ visible, onClose, currentZone, se
     </Modal>
   );
 };
+
 
 const styles = StyleSheet.create({
   modalContainer: {
@@ -241,6 +333,30 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+   daysContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  dayButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  dayButtonSelected: {
+    backgroundColor: '#4CAF50',
+  },
+  dayButtonText: {
+    color: '#333',
+  },
+  dayButtonTextSelected: {
+    color: 'white',
   },
 });
 

@@ -5,6 +5,7 @@ export interface Zone {
 }
 
 export interface HistoryEvent {
+  errorMessage?: string;
   id: string;
   eventType: string;
   action: string;
