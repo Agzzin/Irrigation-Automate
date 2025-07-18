@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useMemo} from 'react';
 import {
   View,
   Text,
@@ -6,12 +6,15 @@ import {
   FlatList,
   StyleSheet,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ZoneModal from '../modal/ZoneModal';
 import {useZones} from '../contexts/ZonesContext';
+import Snackbar from 'react-native-snackbar';
+import {Picker} from '@react-native-picker/picker';
 
 export type DripZone = {
   id: string;
@@ -37,6 +40,8 @@ const DripZonesScreen = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [currentZone, setCurrentZone] = useState<DripZone | null>(null);
   const [localZones, setLocalZones] = useState<DripZone[]>([]);
+  const [sortBy, setSortBy] = useState<'name' | 'status'>('name');
+  const [isSaving, setIsSaving] = useState(false);
 
   const loadZones = async () => {
     try {
@@ -83,8 +88,8 @@ const DripZonesScreen = () => {
               frequency: z.schedule?.frequency ?? 'daily',
               days: z.schedule?.days ?? [],
             },
-          }),
-        ));
+          })),
+        );
       }
     }
   };
@@ -106,24 +111,54 @@ const DripZonesScreen = () => {
     saveZones(localZones);
   }, [localZones]);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refetch();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const sortedZones = useMemo(() => {
+    return [...localZones].sort((a, b) => {
+      if (sortBy === 'name') return a.name.localeCompare(b.name);
+      if (sortBy === 'status') return a.status === 'active' ? -1 : 1;
+      return 0;
+    });
+  }, [localZones, sortBy]);
+
+  const activeZonesCount = useMemo(() => {
+    return localZones.filter(z => z.status === 'active').length;
+  }, [localZones]);
+
   const toggleZone = (zoneId: string) => {
-    setLocalZones(prev =>
-      prev.map(zone => {
-        if (zone.id === zoneId) {
-          const toggleStatus = (status: 'active' | 'inactive' | 'error'): 'active' | 'inactive' => {
-            return status === 'active' ? 'inactive' : 'active';
-          };
+  const zone = localZones.find(z => z.id === zoneId);
+  if (!zone) return;
 
-          const newStatus = toggleStatus(zone.status);
+  Alert.alert(
+    `Confirmar ${zone.status === 'active' ? 'Desativar' : 'Ativar'}`,
+    `Deseja ${zone.status === 'active' ? 'desativar' : 'ativar'} ${zone.name}?`,
+    [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Confirmar',
+        onPress: () => {
+          const newStatus: 'active' | 'inactive' = zone.status === 'active' ? 'inactive' : 'active';
 
-          const updatedZone = {...zone, status: newStatus};
-          toggleZoneStatus(updatedZone);
-          return updatedZone;
-        }
-        return zone;
-      }),
-    );
-  };
+          setLocalZones(prev =>
+            prev.map(z => {
+              if (z.id === zoneId) {
+                const updatedZone = { ...z, status: newStatus };
+                toggleZoneStatus(updatedZone);
+                return updatedZone;
+              }
+              return z;
+            })
+          );
+        },
+      },
+    ]
+  );
+};
 
   const deleteZone = (zoneId: string) => {
     Alert.alert(
@@ -136,6 +171,10 @@ const DripZonesScreen = () => {
           style: 'destructive',
           onPress: () => {
             setLocalZones(prevZones => prevZones.filter(z => z.id !== zoneId));
+            Snackbar.show({
+              text: 'Zona deletada com sucesso!',
+              duration: Snackbar.LENGTH_SHORT,
+            });
           },
         },
       ],
@@ -148,8 +187,74 @@ const DripZonesScreen = () => {
     return days.map(day => dayNames[day]).join('/');
   };
 
-  if (isLoading) return <Text>Carregando zonas...</Text>;
-  if (error) return <Text>Erro ao carregar zonas</Text>;
+  const nextScheduledWatering = () => {
+    const nextWaterings = localZones
+      .filter(z => z.nextWatering)
+      .map(z => new Date(z.nextWatering!));
+    return nextWaterings.length > 0
+      ? new Date(Math.min(...nextWaterings.map(d => d.getTime()))).toLocaleString()
+      : 'Nenhuma irrigação agendada';
+  };
+
+  const handleSaveZone = async (zone: DripZone) => {
+    if (!zone.name.trim()) {
+      Alert.alert('Erro', 'O nome da zona não pode estar vazio.');
+      return;
+    }
+    if (zone.flowRate <= 0 || zone.pressure <= 0) {
+      Alert.alert('Erro', 'Vazão e pressão devem ser maiores que zero.');
+      return;
+    }
+    if (zone.schedule.duration <= 0) {
+      Alert.alert('Erro', 'Duração deve ser maior que zero.');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const zoneToSend = {
+        ...zone,
+        status: zone.status || 'inactive',
+      };
+      const response = await fetch(
+        'https://de56c5927389.ngrok-free.app/api/zones',
+        {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(zoneToSend),
+        },
+      );
+      const savedZone = await response.json();
+
+      if (typeof refetch === 'function') {
+        await refetch();
+      }
+
+      setLocalZones(prev => {
+        const exists = prev.some(z => z.id === savedZone.id);
+        if (exists) {
+          return prev.map(z => (z.id === savedZone.id ? savedZone : z));
+        } else {
+          return [...prev, savedZone];
+        }
+      });
+      Snackbar.show({
+        text: 'Zona salva com sucesso!',
+        duration: Snackbar.LENGTH_SHORT,
+      });
+    } catch (e) {
+      console.error('Erro ao salvar zona na API', e);
+      Snackbar.show({
+        text: 'Erro ao salvar zona',
+        duration: Snackbar.LENGTH_SHORT,
+        backgroundColor: 'red',
+      });
+    } finally {
+      setIsSaving(false);
+      setModalVisible(false);
+      setCurrentZone(null);
+    }
+  };
 
   const renderZoneItem = ({item}: {item: DripZone}) => (
     <View style={styles.zoneCard}>
@@ -197,8 +302,8 @@ const DripZonesScreen = () => {
           {item.schedule.frequency === 'daily'
             ? `Diário - ${item.schedule.duration}min`
             : item.schedule.frequency === 'weekly' && item.schedule.days?.length
-              ? `${formatDays(item.schedule.days)} - ${item.schedule.duration}min`
-              : `Personalizado - ${item.schedule.duration}min`}
+            ? `${formatDays(item.schedule.days)} - ${item.schedule.duration}min`
+            : `Personalizado - ${item.schedule.duration}min`}
         </Text>
       </View>
 
@@ -229,12 +334,35 @@ const DripZonesScreen = () => {
     </View>
   );
 
+  if (isLoading) return <ActivityIndicator size="large" style={styles.loader} />;
+  if (error) return <Text style={styles.errorText}>Erro ao carregar zonas</Text>;
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Zonas de Gotejamento</Text>
 
+      <View style={styles.statsContainer}>
+        <Text style={styles.statsText}>
+          Zonas Ativas: {activeZonesCount}/{localZones.length}
+        </Text>
+        <Text style={styles.statsText}>
+          Próxima Irrigação: {nextScheduledWatering()}
+        </Text>
+      </View>
+
+      <View style={styles.sortContainer}>
+        <Text style={styles.sortLabel}>Ordenar por:</Text>
+        <Picker
+          selectedValue={sortBy}
+          style={styles.sortPicker}
+          onValueChange={value => setSortBy(value)}>
+          <Picker.Item label="Nome (A-Z)" value="name" />
+          <Picker.Item label="Status (Ativas primeiro)" value="status" />
+        </Picker>
+      </View>
+
       <FlatList
-        data={localZones}
+        data={sortedZones}
         renderItem={renderZoneItem}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContent}
@@ -257,41 +385,13 @@ const DripZonesScreen = () => {
         }}
         currentZone={currentZone}
         setCurrentZone={setCurrentZone}
-        onSave={async zone => {
-          try {
-            const zoneToSend = {
-              ...zone,
-              status: zone.status || 'inactive',
-            };
-            const response = await fetch(
-              'https://de56c5927389.ngrok-free.app/api/zones',
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(zoneToSend),
-              },
-            );
-            const savedZone = await response.json();
-
-            if (typeof refetch === 'function') {
-              await refetch();
-            }
-
-            setLocalZones(prev => {
-              const exists = prev.some(z => z.id === savedZone.id);
-              if (exists) {
-                return prev.map(z => (z.id === savedZone.id ? savedZone : z));
-              } else {
-                return [...prev, savedZone];
-              }
-            });
-          } catch (e) {
-            console.error('Erro ao salvar zona na API', e);
-          }
-          setModalVisible(false);
-          setCurrentZone(null);
-        }}
+        onSave={handleSaveZone}
       />
+      {isSaving && (
+        <View style={styles.savingOverlay}>
+          <ActivityIndicator size="large" color="#296C32" />
+        </View>
+      )}
     </View>
   );
 };
@@ -420,6 +520,48 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     fontSize: 14,
+  },
+  loader: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    color: 'red',
+    textAlign: 'center',
+    marginTop: 20,
+  },
+  statsContainer: {
+    backgroundColor: '#fff',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    elevation: 2,
+  },
+  statsText: {
+    fontSize: 14,
+    color: '#555',
+    marginBottom: 4,
+  },
+  sortContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sortLabel: {
+    marginRight: 8,
+    fontSize: 14,
+    color: '#555',
+  },
+  sortPicker: {
+    flex: 1,
+    height: 40,
+  },
+  savingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

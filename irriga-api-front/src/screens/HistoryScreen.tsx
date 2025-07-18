@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback} from 'react';
+import React, {useState, useEffect, useMemo, useCallback} from 'react';
 import {
   View,
   Text,
@@ -21,8 +21,9 @@ import {Zone, HistoryEvent} from '../types/history';
 import RNFS from 'react-native-fs';
 import XLSX from 'xlsx';
 import {Share} from 'react-native';
-
-
+import Snackbar from 'react-native-snackbar';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import RNHTMLtoPDF from 'react-native-html-to-pdf';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -37,11 +38,15 @@ const HistoryScreen: React.FC = () => {
   const [hasMore, setHasMore] = useState<boolean>(true);
   const [selectedEvent, setSelectedEvent] = useState<HistoryEvent | null>(null);
   const [showEventModal, setShowEventModal] = useState<boolean>(false);
+  const [showChart, setShowChart] = useState<boolean>(false);
+  const [showDatePicker, setShowDatePicker] = useState<'start' | 'end' | null>(
+    null,
+  );
 
   const [filters, setFilters] = useState({
     date: '',
-    startDate: '',
-    endDate: '',
+    startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+    endDate: new Date(),
     zone: 'all',
     type: 'all',
     searchTerm: '',
@@ -49,15 +54,6 @@ const HistoryScreen: React.FC = () => {
     maxDuration: '',
   });
 
-  const [showChart, setShowChart] = useState<boolean>(false);
-  const chartData = {
-    labels: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
-    datasets: [
-      {
-        data: [10, 20, 30, 40, 50, 60, 70],
-      },
-    ],
-  };
   const {getZones, getIrrigationHistory} = useApi();
 
   const loadInitialData = async () => {
@@ -65,7 +61,6 @@ const HistoryScreen: React.FC = () => {
       setLoading(true);
       const zonesData = await getZones();
       setZones([{id: 'all', name: 'Todas as zonas'}, ...zonesData]);
-
       await refreshData();
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
@@ -94,28 +89,16 @@ const HistoryScreen: React.FC = () => {
       try {
         let result = [...data];
 
-        // Filtro por zona
         if (filters.zone !== 'all') {
           result = result.filter(event =>
             event.zones.some(zone => zone.id === filters.zone),
           );
         }
 
-        // Filtro por tipo
         if (filters.type !== 'all') {
           result = result.filter(event => event.eventType === filters.type);
         }
 
-        // Filtro por data específica
-        if (filters.date) {
-          const filterDate = new Date(filters.date).setHours(0, 0, 0, 0);
-          result = result.filter(event => {
-            const eventDate = new Date(event.createdAt).setHours(0, 0, 0, 0);
-            return eventDate === filterDate;
-          });
-        }
-
-        // Filtro por intervalo de datas
         if (filters.startDate && filters.endDate) {
           const start = new Date(filters.startDate).setHours(0, 0, 0, 0);
           const end = new Date(filters.endDate).setHours(23, 59, 59, 999);
@@ -125,7 +108,6 @@ const HistoryScreen: React.FC = () => {
           });
         }
 
-        // Filtro por duração
         if (filters.minDuration) {
           const min = parseInt(filters.minDuration, 10);
           result = result.filter(event => event.duration >= min);
@@ -136,7 +118,6 @@ const HistoryScreen: React.FC = () => {
           result = result.filter(event => event.duration <= max);
         }
 
-        // Filtro por termo de busca
         if (filters.searchTerm) {
           const term = filters.searchTerm.toLowerCase();
           result = result.filter(
@@ -182,57 +163,129 @@ const HistoryScreen: React.FC = () => {
     setHasMore(filteredEvents.length > newEvents.length);
   };
 
-  const handleFilterChange = (name: string, value: string) => {
+  const handleFilterChange = (name: string, value: any) => {
     setFilters(prev => ({
       ...prev,
       [name]: value,
     }));
   };
 
-  const handleExportCSV = async () => {
-  try {
-    const headers = [
-      'Data',
-      'Hora',
-      'Tipo',
-      'Ação',
-      'Zonas',
-      'Duração (min)',
-      'Umidade',
-      'Clima',
-      'Fonte',
-    ];
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(null);
+    if (selectedDate) {
+      const field = showDatePicker === 'start' ? 'startDate' : 'endDate';
+      handleFilterChange(field, selectedDate);
+    }
+  };
 
-    const data = filteredEvents.map(event => [
-      new Date(event.createdAt).toLocaleDateString('pt-BR'),
-      new Date(event.createdAt).toLocaleTimeString('pt-BR'),
-      event.eventType,
-      event.action,
-      event.zones.map(z => z.name).join(', '),
-      event.duration,
-      event.humidity || 'N/A',
-      event.weather || 'N/A',
-      event.source,
-    ]);
-
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Histórico');
-
-    const wbout = XLSX.write(wb, {type: 'base64', bookType: 'csv'});
-    const filePath = `${RNFS.DocumentDirectoryPath}/historico_irrigacao_${Date.now()}.csv`;
-
-    await RNFS.writeFile(filePath, wbout, 'base64');
-    
-    Share.share({
-      title: 'Exportar Histórico',
-      url: `file://${filePath}`,
+  const calculateWeeklyUsage = () => {
+    const days = [0, 1, 2, 3, 4, 5, 6];
+    return days.map(day => {
+      return filteredEvents
+        .filter(event => new Date(event.createdAt).getDay() === day)
+        .reduce((sum, event) => sum + event.duration, 0);
     });
-  } catch (error) {
-    console.error('Erro ao exportar:', error);
-    Alert.alert('Erro', 'Não foi possível exportar o histórico');
-  }
-};
+  };
+
+  const handleExportCSV = async () => {
+    try {
+      const headers = [
+        'Data',
+        'Hora',
+        'Tipo',
+        'Ação',
+        'Zonas',
+        'Duração (min)',
+        'Umidade',
+        'Clima',
+        'Fonte',
+      ];
+
+      const data = filteredEvents.map(event => [
+        new Date(event.createdAt).toLocaleDateString('pt-BR'),
+        new Date(event.createdAt).toLocaleTimeString('pt-BR'),
+        event.eventType,
+        event.action,
+        event.zones.map(z => z.name).join(', '),
+        event.duration,
+        event.humidity || 'N/A',
+        event.weather || 'N/A',
+        event.source,
+      ]);
+
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Histórico');
+
+      const wbout = XLSX.write(wb, {type: 'base64', bookType: 'csv'});
+      const filePath = `${
+        RNFS.DocumentDirectoryPath
+      }/historico_irrigacao_${Date.now()}.csv`;
+
+      await RNFS.writeFile(filePath, wbout, 'base64');
+
+      Share.share({
+        title: 'Exportar Histórico',
+        url: `file://${filePath}`,
+      });
+
+      Snackbar.show({
+        text: 'Histórico exportado com sucesso!',
+        duration: Snackbar.LENGTH_SHORT,
+      });
+    } catch (error) {
+      console.error('Erro ao exportar:', error);
+      Alert.alert('Erro', 'Não foi possível exportar o histórico');
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      const html = `
+        <h1>Histórico de Irrigação</h1>
+        <table border="1">
+          <tr>
+            <th>Data</th>
+            <th>Ação</th>
+            <th>Zonas</th>
+            <th>Duração (min)</th>
+          </tr>
+          ${filteredEvents
+            .map(
+              event => `
+            <tr>
+              <td>${new Date(event.createdAt).toLocaleString('pt-BR')}</td>
+              <td>${event.action}</td>
+              <td>${event.zones.map(z => z.name).join(', ')}</td>
+              <td>${event.duration}</td>
+            </tr>
+          `,
+            )
+            .join('')}
+        </table>
+      `;
+
+      const options = {
+        html,
+        fileName: `historico_irrigacao_${Date.now()}`,
+        directory: 'Documents',
+      };
+
+      const file = await RNHTMLtoPDF.convert(options);
+      Share.share({
+        title: 'Exportar Histórico',
+        url: `file://${file.filePath}`,
+      });
+
+      Snackbar.show({
+        text: 'PDF gerado com sucesso!',
+        duration: Snackbar.LENGTH_SHORT,
+      });
+    } catch (error) {
+      console.error('Erro ao exportar PDF:', error);
+      Alert.alert('Erro', 'Não foi possível gerar o PDF');
+    }
+  };
 
   const renderEventIcon = (type: string) => {
     switch (type) {
@@ -260,13 +313,14 @@ const HistoryScreen: React.FC = () => {
     return <Icon name="wb-cloudy" size={20} color="#607D8B" />;
   };
 
-  const renderItem = ({item}: {item: HistoryEvent}) => (
+  const MemoizedHistoryItem = React.memo(({item}: {item: HistoryEvent}) => (
     <TouchableOpacity
       onPress={() => {
         setSelectedEvent(item);
         setShowEventModal(true);
       }}>
-      <View style={[styles.eventItem, item.status === 'error' && styles.errorItem]}>
+      <View
+        style={[styles.eventItem, item.status === 'error' && styles.errorItem]}>
         <View style={styles.eventHeader}>
           {renderEventIcon(item.eventType)}
           <Text style={styles.eventDateTime}>
@@ -291,7 +345,7 @@ const HistoryScreen: React.FC = () => {
         <Text style={styles.eventSource}>Fonte: {item.source}</Text>
       </View>
     </TouchableOpacity>
-  );
+  ));
 
   const renderFooter = () => {
     if (!hasMore) return null;
@@ -316,7 +370,6 @@ const HistoryScreen: React.FC = () => {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refreshData} />
         }>
-        {/* Filtros */}
         <View style={styles.filterContainer}>
           <Text style={styles.sectionTitle}>Filtros</Text>
 
@@ -352,21 +405,30 @@ const HistoryScreen: React.FC = () => {
           <View style={styles.dateRangeContainer}>
             <Text style={styles.filterLabel}>Intervalo de datas:</Text>
             <View style={styles.dateInputs}>
-              <TextInput
+              <TouchableOpacity
                 style={styles.dateInput}
-                placeholder="Data inicial (DD/MM/AAAA)"
-                value={filters.startDate}
-                onChangeText={text => handleFilterChange('startDate', text)}
-              />
+                onPress={() => setShowDatePicker('start')}>
+                <Text>{filters.startDate.toLocaleDateString('pt-BR')}</Text>
+              </TouchableOpacity>
               <Text style={styles.dateSeparator}>à</Text>
-              <TextInput
+              <TouchableOpacity
                 style={styles.dateInput}
-                placeholder="Data final (DD/MM/AAAA)"
-                value={filters.endDate}
-                onChangeText={text => handleFilterChange('endDate', text)}
-              />
+                onPress={() => setShowDatePicker('end')}>
+                <Text>{filters.endDate.toLocaleDateString('pt-BR')}</Text>
+              </TouchableOpacity>
             </View>
           </View>
+
+          {showDatePicker && (
+            <DateTimePicker
+              value={
+                showDatePicker === 'start' ? filters.startDate : filters.endDate
+              }
+              mode="date"
+              display="default"
+              onChange={handleDateChange}
+            />
+          )}
 
           <View style={styles.durationFilter}>
             <Text style={styles.filterLabel}>Duração (min):</Text>
@@ -407,7 +469,10 @@ const HistoryScreen: React.FC = () => {
           <View style={styles.chartContainer}>
             <Text style={styles.chartTitle}>Minutos de irrigação por dia</Text>
             <BarChart
-              data={chartData}
+              data={{
+                labels: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
+                datasets: [{data: calculateWeeklyUsage()}],
+              }}
               width={Dimensions.get('window').width - 40}
               height={220}
               yAxisLabel=""
@@ -434,11 +499,11 @@ const HistoryScreen: React.FC = () => {
         {filteredEvents.length > 0 ? (
           <FlatList
             data={displayedEvents}
-            renderItem={renderItem}
+            renderItem={({item}) => <MemoizedHistoryItem item={item} />}
             keyExtractor={item => item.id}
             scrollEnabled={false}
             onEndReached={loadMoreEvents}
-            onEndReachedThreshold={0.5}
+            onEndReachedThreshold={0.1}
             ListFooterComponent={renderFooter}
           />
         ) : (
@@ -452,8 +517,8 @@ const HistoryScreen: React.FC = () => {
               onPress={() =>
                 setFilters({
                   date: '',
-                  startDate: '',
-                  endDate: '',
+                  startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+                  endDate: new Date(),
                   zone: 'all',
                   type: 'all',
                   searchTerm: '',
@@ -466,15 +531,24 @@ const HistoryScreen: React.FC = () => {
           </View>
         )}
 
-        <TouchableOpacity
-          style={styles.exportButton}
-          onPress={handleExportCSV}
-          disabled={filteredEvents.length === 0}>
-          <Icon name="file-download" size={20} color="#FFFFFF" />
-          <Text style={styles.exportButtonText}>Exportar Histórico (CSV)</Text>
-        </TouchableOpacity>
+        <View style={styles.exportButtonsContainer}>
+          <TouchableOpacity
+            style={[styles.exportButton, styles.exportButtonCSV]}
+            onPress={handleExportCSV}
+            disabled={filteredEvents.length === 0}>
+            <Icon name="file-download" size={20} color="#FFFFFF" />
+            <Text style={styles.exportButtonText}>Exportar CSV</Text>
+          </TouchableOpacity>
 
-        {/* Modal de detalhes do evento */}
+          <TouchableOpacity
+            style={[styles.exportButton, styles.exportButtonPDF]}
+            onPress={handleExportPDF}
+            disabled={filteredEvents.length === 0}>
+            <Icon name="picture-as-pdf" size={20} color="#FFFFFF" />
+            <Text style={styles.exportButtonText}>Exportar PDF</Text>
+          </TouchableOpacity>
+        </View>
+
         {selectedEvent && (
           <Modal
             visible={showEventModal}
@@ -576,7 +650,6 @@ const HistoryScreen: React.FC = () => {
     </View>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -843,6 +916,17 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  exportButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 16,
+  },
+  exportButtonCSV: {
+    backgroundColor: '#296C32',
+  },
+  exportButtonPDF: {
+    backgroundColor: '#f44336',
   },
 });
 
