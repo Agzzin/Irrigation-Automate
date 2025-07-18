@@ -264,7 +264,7 @@ const DripZonesScreen = () => {
               status: zone.status || 'inactive',
             };
             const response = await fetch(
-              'https://c6579a4c806f.ngrok-free.app/api/zones',
+              'https://de56c5927389.ngrok-free.app/api/zones',
               {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

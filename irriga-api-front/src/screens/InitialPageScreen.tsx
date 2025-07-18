@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   ScrollView,
   RefreshControl,
+  Dimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -20,12 +21,19 @@ import Thermometer from '../../assets/icons/thermometer-half.svg';
 import Power from '../../assets/icons/power.svg';
 import Water from '../../assets/icons/water.svg';
 
-import { useZones } from '../contexts/ZonesContext';
+import {useZones} from '../contexts/ZonesContext';
 
 const MIN_UMIDADE = 40;
 
+const { width } = Dimensions.get('window');
+const CARD_MARGIN = 8; 
+const CONTAINER_PADDING = 16; 
+const CARDS_PER_ROW = 3;
+
+const ZONE_CARD_WIDTH = 
+  (width - (CONTAINER_PADDING * 2) - (CARD_MARGIN * (CARDS_PER_ROW - 1) * 2)) / CARDS_PER_ROW;
 const InitialPageScreen = () => {
-  const { zones, isLoading: loadingZones, error: errorZones } = useZones();
+  const {zones, isLoading: loadingZones, error: errorZones} = useZones();
 
   const [switchIrrigationMode, setSwitchIrrigationMode] = useState(false);
   const [switchPauseRain, setSwitchPauseRain] = useState(false);
@@ -43,9 +51,8 @@ const InitialPageScreen = () => {
   const [sensorError, setSensorError] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  
 
-  
+  const MIN_UMIDADE = 40;
 
   // Carregar configurações do AsyncStorage
   useEffect(() => {
@@ -68,10 +75,18 @@ const InitialPageScreen = () => {
   }, []);
 
   // Salvar configurações no AsyncStorage
-  useEffect(() => { AsyncStorage.setItem('modoAuto', switchIrrigationMode.toString()); }, [switchIrrigationMode]);
-  useEffect(() => { AsyncStorage.setItem('pausarChuva', switchPauseRain.toString()); }, [switchPauseRain]);
-  useEffect(() => { AsyncStorage.setItem('umidadeMin', switchMinHumidity.toString()); }, [switchMinHumidity]);
-  useEffect(() => { AsyncStorage.setItem('notificacoes', switchNotifications.toString()); }, [switchNotifications]);
+  useEffect(() => {
+    AsyncStorage.setItem('modoAuto', switchIrrigationMode.toString());
+  }, [switchIrrigationMode]);
+  useEffect(() => {
+    AsyncStorage.setItem('pausarChuva', switchPauseRain.toString());
+  }, [switchPauseRain]);
+  useEffect(() => {
+    AsyncStorage.setItem('umidadeMin', switchMinHumidity.toString());
+  }, [switchMinHumidity]);
+  useEffect(() => {
+    AsyncStorage.setItem('notificacoes', switchNotifications.toString());
+  }, [switchNotifications]);
 
   // Fetch dados sensores
   const fetchSensorData = useCallback(async () => {
@@ -123,7 +138,8 @@ const InitialPageScreen = () => {
 
       const data = await response.json();
 
-      if (typeof data.ligada !== 'boolean') throw new Error('Dados da bomba inválidos');
+      if (typeof data.ligada !== 'boolean')
+        throw new Error('Dados da bomba inválidos');
 
       setBombaLigada(data.ligada);
     } catch (error) {
@@ -178,21 +194,14 @@ const InitialPageScreen = () => {
         return;
       }
 
-      if (
-        switchMinHumidity &&
-        soilMoisture >= MIN_UMIDADE &&
-        bombaLigada
-      ) {
+      if (switchMinHumidity && soilMoisture >= MIN_UMIDADE && bombaLigada) {
         await toggleBomba(false);
         if (switchNotifications)
           Alert.alert('Automação', 'Irrigação desligada - umidade suficiente.');
         return;
       }
 
-      if (
-        soilMoisture < MIN_UMIDADE &&
-        !bombaLigada
-      ) {
+      if (soilMoisture < MIN_UMIDADE && !bombaLigada) {
         await toggleBomba(true);
         if (switchNotifications)
           Alert.alert('Automação', 'Irrigação ligada - umidade baixa.');
@@ -220,12 +229,17 @@ const InitialPageScreen = () => {
       const novoEstado = forcarEstado ?? !bombaLigada;
 
       if (!isOnline) {
-        Alert.alert('Erro', 'Dispositivo offline. Não é possível alterar a bomba.');
+        Alert.alert(
+          'Erro',
+          'Dispositivo offline. Não é possível alterar a bomba.',
+        );
         return;
       }
       try {
         setLoadingBomba(true);
-        const url = `http://192.168.0.100/bomba/${novoEstado ? 'ligar' : 'desligar'}`;
+        const url = `http://192.168.0.100/bomba/${
+          novoEstado ? 'ligar' : 'desligar'
+        }`;
         const response = await fetch(url, {method: 'POST'});
         if (!response.ok) throw new Error('Falha na requisição');
         await fetchEstadoBomba();
@@ -259,7 +273,9 @@ const InitialPageScreen = () => {
   if (errorZones) {
     return (
       <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-        <Text style={{color: 'red', fontWeight: 'bold'}}>Erro ao carregar zonas</Text>
+        <Text style={{color: 'red', fontWeight: 'bold'}}>
+          Erro ao carregar zonas
+        </Text>
       </View>
     );
   }
@@ -268,9 +284,9 @@ const InitialPageScreen = () => {
     <ScrollView
       style={{flex: 1}}
       contentContainerStyle={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-    >
-      {/* DASHBOARD */}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }>
       <View style={styles.dashboard}>
         <Text style={styles.dashboardText}>DASHBOARD</Text>
         <View style={{flexDirection: 'row', alignItems: 'center'}}>
@@ -291,7 +307,6 @@ const InitialPageScreen = () => {
         Conexão: {isOnline ? 'Conectado' : 'Desconectado'}
       </Text>
 
-      {/* Status Atual */}
       <View style={styles.statusContainer}>
         <Text style={styles.statusText}>Status Atual</Text>
         <View style={styles.irrigationInfo}>
@@ -301,8 +316,7 @@ const InitialPageScreen = () => {
               !isOnline && {backgroundColor: '#999'},
             ]}
             onPress={() => toggleBomba()}
-            disabled={loadingBomba || bombaLigada === null || !isOnline}
-          >
+            disabled={loadingBomba || bombaLigada === null || !isOnline}>
             {loadingBomba ? (
               <ActivityIndicator color="#fff" />
             ) : (
@@ -331,7 +345,6 @@ const InitialPageScreen = () => {
         </View>
       )}
 
-      {/* Cards de sensores */}
       <View style={styles.cardRow}>
         <View style={styles.card}>
           <SoilMoisture width={30} height={30} />
@@ -363,8 +376,7 @@ const InitialPageScreen = () => {
             },
           ]}
           onPress={() => toggleBomba()}
-          disabled={loadingBomba || bombaLigada === null || !isOnline}
-        >
+          disabled={loadingBomba || bombaLigada === null || !isOnline}>
           {loadingBomba ? (
             <ActivityIndicator color="#fff" />
           ) : (
@@ -378,27 +390,36 @@ const InitialPageScreen = () => {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.zonasContainer}>
+      <View style={[styles.zonasContainer, {paddingHorizontal: CARD_MARGIN}]}>
         {Array.isArray(zones) && zones.length > 0 ? (
-          zones.map((zona) => (
-            <View key={zona.id} style={styles.zonaCard}>
-              <Text style={styles.zonaNome}>{zona.name}</Text>
-              <Water width={30} height={30} color="#296C32" />
-              <Text
+          <View style={styles.zonasGrid}>
+            {zones.map(zona => (
+              <View
+                key={zona.id}
                 style={[
-                  styles.statusTextZona,
-                  { color: zona.status === 'active' ? '#296C32' : '#cc4444' },
+                  styles.zonaCard,
+                  {
+                    width: ZONE_CARD_WIDTH,
+                    margin: CARD_MARGIN,
+                  },
                 ]}>
-                {zona.status === 'active' ? 'Ligada' : 'Desligada'}
-              </Text>
-            </View>
-          ))
+                <Text style={styles.zonaNome}>{zona.name}</Text>
+                <Water width={30} height={30} color="#296C32" />
+                <Text
+                  style={[
+                    styles.statusTextZona,
+                    {color: zona.status === 'active' ? '#296C32' : '#cc4444'},
+                  ]}>
+                  {zona.status === 'active' ? 'Ligada' : 'Desligada'}
+                </Text>
+              </View>
+            ))}
+          </View>
         ) : (
-          <Text style={{color: '#888', marginTop: 10}}>Nenhuma zona cadastrada.</Text>
+          <Text style={styles.noZonesText}>Nenhuma zona cadastrada.</Text>
         )}
       </View>
 
-      {/* Configurações */}
       <View style={styles.cardContainer}>
         <Text style={styles.cardTitle}>Conectividade & Configurações</Text>
 
@@ -447,8 +468,6 @@ const InitialPageScreen = () => {
     </ScrollView>
   );
 };
-
-
 
 const styles = StyleSheet.create({
   container: {
@@ -547,15 +566,22 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginTop: 5,
   },
+
   zonasContainer: {
+    width: '100%',
+    paddingHorizontal:CONTAINER_PADDING,
+    alignItems:'center',
+  },
+  zonasGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '90%',
-    marginTop: 20,
+    flexWrap: 'wrap',
+    marginLeft: -CARD_MARGIN,
   },
   zonaCard: {
+    width: ZONE_CARD_WIDTH,
+    marginLeft: CARD_MARGIN,
+    marginBottom: CARD_MARGIN,
     backgroundColor: '#fff',
-    width: '30%',
     borderRadius: 10,
     padding: 15,
     alignItems: 'center',
@@ -568,16 +594,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 10,
+    textAlign: 'center',
+  },
+  statusTextZona: {
+    fontWeight: '600',
+    fontSize: 16,
+    marginTop: 8,
+  },
+  noZonesText: {
+    color: '#888',
+    marginTop: 10,
+    textAlign: 'center',
+    width: '100%',
   },
   statusIndicator: {
     width: 20,
     height: 20,
     borderRadius: 10,
     marginBottom: 8,
-  },
-  statusTextZona: {
-    fontWeight: '600',
-    fontSize: 16,
   },
   cardContainer: {
     width: '95%',
@@ -615,44 +649,44 @@ const styles = StyleSheet.create({
   manualButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent:'center',
+    justifyContent: 'center',
     backgroundColor: '#296C32',
     paddingVertical: 20,
     paddingHorizontal: 75,
     borderRadius: 10,
-    width:'95%',
+    width: '95%',
     gap: 10,
   },
   manualText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
-    flexDirection:'row',
+    flexDirection: 'row',
   },
   zonaRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   errorContainer: {
-  backgroundColor: '#f8d7da',
-  borderRadius: 10,
-  padding: 12,
-  marginVertical: 10,
-  width: '90%',
-  alignItems: 'center',
-  shadowColor: '#721c24',
-  shadowOpacity: 0.4,
-  shadowRadius: 4,
-  shadowOffset: { width: 0, height: 2 },
-  elevation: 3,
-},
+    backgroundColor: '#f8d7da',
+    borderRadius: 10,
+    padding: 12,
+    marginVertical: 10,
+    width: '90%',
+    alignItems: 'center',
+    shadowColor: '#721c24',
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    shadowOffset: {width: 0, height: 2},
+    elevation: 3,
+  },
 
-errorText: {
-  color: '#721c24',
-  fontWeight: '600',
-  fontSize: 14,
-  textAlign: 'center',
-},
+  errorText: {
+    color: '#721c24',
+    fontWeight: '600',
+    fontSize: 14,
+    textAlign: 'center',
+  },
 });
 
 export default InitialPageScreen;
