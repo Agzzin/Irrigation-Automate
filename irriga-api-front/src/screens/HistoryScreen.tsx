@@ -73,12 +73,42 @@ const HistoryScreen: React.FC = () => {
   const refreshData = async () => {
     try {
       setRefreshing(true);
-      const historyData = await getIrrigationHistory();
-      setEvents(historyData);
-      applyFilters(historyData);
+      
+      // Prepara os filtros para a API
+      const apiFilters: {
+        startDate?: string;
+        endDate?: string;
+        eventType?: string;
+      } = {};
+      
+      if (filters.zone !== 'all') {
+        // Se um zona específica foi selecionada, usamos o endpoint com zoneId
+        const historyData = await getIrrigationHistory(filters.zone, {
+          startDate: filters.startDate.toISOString(),
+          endDate: filters.endDate.toISOString(),
+          eventType: filters.type !== 'all' ? filters.type : undefined,
+        });
+        setEvents(historyData);
+      } else {
+        // Se "Todas as zonas" foi selecionada, usamos o endpoint geral
+        if (filters.startDate) {
+          apiFilters.startDate = filters.startDate.toISOString();
+        }
+        if (filters.endDate) {
+          apiFilters.endDate = filters.endDate.toISOString();
+        }
+        if (filters.type !== 'all') {
+          apiFilters.eventType = filters.type;
+        }
+        
+        const historyData = await getIrrigationHistory(undefined, apiFilters);
+        setEvents(historyData);
+      }
+      
       setPage(1);
     } catch (error) {
       console.error('Erro ao atualizar dados:', error);
+      Alert.alert('Erro', 'Não foi possível carregar o histórico');
     } finally {
       setRefreshing(false);
     }
@@ -86,59 +116,36 @@ const HistoryScreen: React.FC = () => {
 
   const applyFilters = useCallback(
     (data: HistoryEvent[]) => {
-      try {
-        let result = [...data];
+      let result = [...data];
 
-        if (filters.zone !== 'all') {
-          result = result.filter(event =>
-            event.zones.some(zone => zone.id === filters.zone),
-          );
-        }
-
-        if (filters.type !== 'all') {
-          result = result.filter(event => event.eventType === filters.type);
-        }
-
-        if (filters.startDate && filters.endDate) {
-          const start = new Date(filters.startDate).setHours(0, 0, 0, 0);
-          const end = new Date(filters.endDate).setHours(23, 59, 59, 999);
-          result = result.filter(event => {
-            const eventDate = new Date(event.createdAt).getTime();
-            return eventDate >= start && eventDate <= end;
-          });
-        }
-
-        if (filters.minDuration) {
-          const min = parseInt(filters.minDuration, 10);
-          result = result.filter(event => event.duration >= min);
-        }
-
-        if (filters.maxDuration) {
-          const max = parseInt(filters.maxDuration, 10);
-          result = result.filter(event => event.duration <= max);
-        }
-
-        if (filters.searchTerm) {
-          const term = filters.searchTerm.toLowerCase();
-          result = result.filter(
-            event =>
-              event.action.toLowerCase().includes(term) ||
-              event.zones.some(zone =>
-                zone.name.toLowerCase().includes(term),
-              ) ||
-              event.source.toLowerCase().includes(term) ||
-              (event.weather && event.weather.toLowerCase().includes(term)),
-          );
-        }
-
-        setFilteredEvents(result);
-        setDisplayedEvents(result.slice(0, ITEMS_PER_PAGE));
-        setHasMore(result.length > ITEMS_PER_PAGE);
-      } catch (error) {
-        console.error('Erro ao filtrar:', error);
+      // Filtro de busca
+      if (filters.searchTerm) {
+        const term = filters.searchTerm.toLowerCase();
+        result = result.filter(
+          event =>
+            event.action.toLowerCase().includes(term) ||
+            event.zones.some(zone => zone.name.toLowerCase().includes(term)) ||
+            event.source.toLowerCase().includes(term) ||
+            (event.weather && event.weather.toLowerCase().includes(term)),
+        );
       }
+
+      // Filtro de duração
+      if (filters.minDuration) {
+        const min = parseInt(filters.minDuration, 10);
+        result = result.filter(event => event.duration >= min);
+      }
+
+      if (filters.maxDuration) {
+        const max = parseInt(filters.maxDuration, 10);
+        result = result.filter(event => event.duration <= max);
+      }
+
+      setFilteredEvents(result);
+      setDisplayedEvents(result.slice(0, ITEMS_PER_PAGE));
+      setHasMore(result.length > ITEMS_PER_PAGE);
     },
-    [filters],
+    [filters.searchTerm, filters.minDuration, filters.maxDuration],
   );
 
   useEffect(() => {
@@ -149,7 +156,7 @@ const HistoryScreen: React.FC = () => {
     if (events.length > 0) {
       applyFilters(events);
     }
-  }, [filters, events, applyFilters]);
+  }, [events, applyFilters]);
 
   const loadMoreEvents = () => {
     if (!hasMore) return;
@@ -174,6 +181,12 @@ const HistoryScreen: React.FC = () => {
     setShowDatePicker(null);
     if (selectedDate) {
       const field = showDatePicker === 'start' ? 'startDate' : 'endDate';
+      // Garante que a hora seja 00:00:00 para startDate e 23:59:59 para endDate
+      if (field === 'startDate') {
+        selectedDate.setHours(0, 0, 0, 0);
+      } else {
+        selectedDate.setHours(23, 59, 59, 999);
+      }
       handleFilterChange(field, selectedDate);
     }
   };
@@ -313,39 +326,42 @@ const HistoryScreen: React.FC = () => {
     return <Icon name="wb-cloudy" size={20} color="#607D8B" />;
   };
 
-  const MemoizedHistoryItem = React.memo(({item}: {item: HistoryEvent}) => (
-    <TouchableOpacity
-      onPress={() => {
-        setSelectedEvent(item);
-        setShowEventModal(true);
-      }}>
-      <View
-        style={[styles.eventItem, item.status === 'error' && styles.errorItem]}>
-        <View style={styles.eventHeader}>
-          {renderEventIcon(item.eventType)}
-          <Text style={styles.eventDateTime}>
-            {new Date(item.createdAt).toLocaleDateString('pt-BR')} -{' '}
-            {new Date(item.createdAt).toLocaleTimeString('pt-BR', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-          </Text>
-          {renderWeatherIcon(item.weather)}
+  const MemoizedHistoryItem = React.memo(({item}: {item: HistoryEvent}) => {
+    const eventDate = new Date(item.createdAt);
+    const dateStr = eventDate.toLocaleDateString('pt-BR');
+    const timeStr = eventDate.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const zonesStr = item.zones.map(z => z.name).join(', ');
+
+    return (
+      <TouchableOpacity
+        onPress={() => {
+          setSelectedEvent(item);
+          setShowEventModal(true);
+        }}>
+        <View style={[styles.eventItem, item.status === 'error' && styles.errorItem]}>
+          <View style={styles.eventHeader}>
+            {renderEventIcon(item.eventType)}
+            <Text style={styles.eventDateTime}>
+              {dateStr} - {timeStr}
+            </Text>
+            {renderWeatherIcon(item.weather)}
+          </View>
+          <Text style={styles.eventAction}>{item.action}</Text>
+          <View style={styles.eventDetails}>
+            <Text style={styles.eventDetail}>Zonas: {zonesStr}</Text>
+            <Text style={styles.eventDetail}>Duração: {item.duration} min</Text>
+          </View>
+          {item.humidity && (
+            <Text style={styles.eventDetail}>Umidade: {item.humidity}%</Text>
+          )}
+          <Text style={styles.eventSource}>Fonte: {item.source}</Text>
         </View>
-        <Text style={styles.eventAction}>{item.action}</Text>
-        <View style={styles.eventDetails}>
-          <Text style={styles.eventDetail}>
-            Zonas: {item.zones.map(z => z.name).join(', ')}
-          </Text>
-          <Text style={styles.eventDetail}>Duração: {item.duration} min</Text>
-        </View>
-        {item.humidity && (
-          <Text style={styles.eventDetail}>Umidade: {item.humidity}%</Text>
-        )}
-        <Text style={styles.eventSource}>Fonte: {item.source}</Text>
-      </View>
-    </TouchableOpacity>
-  ));
+      </TouchableOpacity>
+    );
+  });
 
   const renderFooter = () => {
     if (!hasMore) return null;
@@ -496,40 +512,39 @@ const HistoryScreen: React.FC = () => {
           Eventos ({filteredEvents.length})
         </Text>
 
-        {filteredEvents.length > 0 ? (
-          <FlatList
-            data={displayedEvents}
-            renderItem={({item}) => <MemoizedHistoryItem item={item} />}
-            keyExtractor={item => item.id}
-            scrollEnabled={false}
-            onEndReached={loadMoreEvents}
-            onEndReachedThreshold={0.1}
-            ListFooterComponent={renderFooter}
-          />
-        ) : (
-          <View style={styles.noResultsContainer}>
-            <Icon name="info-outline" size={40} color="#9E9E9E" />
-            <Text style={styles.noResults}>
-              Nenhum evento encontrado com os filtros atuais
-            </Text>
-            <TouchableOpacity
-              style={styles.clearFiltersButton}
-              onPress={() =>
-                setFilters({
-                  date: '',
-                  startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-                  endDate: new Date(),
-                  zone: 'all',
-                  type: 'all',
-                  searchTerm: '',
-                  minDuration: '',
-                  maxDuration: '',
-                })
-              }>
-              <Text style={styles.clearFiltersText}>Limpar filtros</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        <FlatList
+          data={displayedEvents}
+          renderItem={({item}) => <MemoizedHistoryItem item={item} />}
+          keyExtractor={item => item.id}
+          scrollEnabled={false}
+          onEndReached={loadMoreEvents}
+          onEndReachedThreshold={0.1}
+          ListFooterComponent={renderFooter}
+          ListEmptyComponent={
+            <View style={styles.noResultsContainer}>
+              <Icon name="info-outline" size={40} color="#9E9E9E" />
+              <Text style={styles.noResults}>
+                Nenhum evento encontrado com os filtros atuais
+              </Text>
+              <TouchableOpacity
+                style={styles.clearFiltersButton}
+                onPress={() =>
+                  setFilters({
+                    date: '',
+                    startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+                    endDate: new Date(),
+                    zone: 'all',
+                    type: 'all',
+                    searchTerm: '',
+                    minDuration: '',
+                    maxDuration: '',
+                  })
+                }>
+                <Text style={styles.clearFiltersText}>Limpar filtros</Text>
+              </TouchableOpacity>
+            </View>
+          }
+        />
 
         <View style={styles.exportButtonsContainer}>
           <TouchableOpacity
@@ -650,6 +665,7 @@ const HistoryScreen: React.FC = () => {
     </View>
   );
 };
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -921,6 +937,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     padding: 16,
+    gap: 10,
   },
   exportButtonCSV: {
     backgroundColor: '#296C32',
