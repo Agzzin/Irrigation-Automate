@@ -25,3 +25,5 @@ export interface FilterOptions {
   type: string;
   searchTerm: string;
 }
+
+export type ZoneId = string | 'all';

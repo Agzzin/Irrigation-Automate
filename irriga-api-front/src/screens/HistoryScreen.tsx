@@ -101,7 +101,7 @@ const HistoryScreen: React.FC = () => {
           apiFilters.eventType = filters.type;
         }
         
-        const historyData = await getIrrigationHistory(undefined, apiFilters);
+        const historyData = await getIrrigationHistory('all', apiFilters);
         setEvents(historyData);
       }
       

@@ -1,10 +1,9 @@
 import { useAuth } from '../contexts/AuthContext';
-import { Zone, HistoryEvent } from '../types/history';
+import { Zone, HistoryEvent, ZoneId } from '../types/history';
 
-const createApiService = () => {
+ const createApiService = () => {
   const { token } = useAuth();
-
-  const apiBaseUrl = 'https://40d7bc6d43b1.ngrok-free.app'; 
+  const apiBaseUrl = 'https://a4e71c2d9346.ngrok-free.app/api'; 
 
   const authFetch = async (endpoint: string, options: RequestInit = {}) => {
     const url = `${apiBaseUrl}${endpoint}`;
@@ -34,26 +33,26 @@ const createApiService = () => {
   };
 
   const getIrrigationHistory = async (
-    zoneId?: string, 
-    filters: {
-      startDate?: string;
-      endDate?: string;
-      eventType?: string;
-    } = {}
-  ): Promise<HistoryEvent[]> => {
-    try {
-      const params = new URLSearchParams();
-      if (filters.startDate) params.append('startDate', filters.startDate);
-      if (filters.endDate) params.append('endDate', filters.endDate);
-      if (filters.eventType) params.append('eventType', filters.eventType);
+  zoneId: ZoneId, 
+  filters: {
+    startDate?: string;
+    endDate?: string;
+    eventType?: string;
+  } = {}
+): Promise<HistoryEvent[]> => {
+  try {
+    const params = new URLSearchParams();
+    if (filters.startDate) params.append('startDate', filters.startDate);
+    if (filters.endDate) params.append('endDate', filters.endDate);
+    if (filters.eventType) params.append('eventType', filters.eventType);
 
-      const endpoint = zoneId ? `/zones/${zoneId}/history` : '/history';
-      return await authFetch(`${endpoint}?${params.toString()}`);
-    } catch (error) {
-      console.error('Erro ao buscar histórico:', error);
-      throw error;
-    }
-  };
+    const endpoint = `/zones/${zoneId}/history`; // Sempre com zoneId
+    return await authFetch(`${endpoint}?${params.toString()}`);
+  } catch (error) {
+    console.error('Erro ao buscar histórico:', error);
+    throw error;
+  }
+};
 
   const logHistoryEvent = async (
     zoneId: string,
