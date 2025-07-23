@@ -18,6 +18,7 @@ import {Picker} from '@react-native-picker/picker';
 
 export type DripZone = {
   id: string;
+  userId: string;
   name: string;
   status: 'active' | 'inactive' | 'error';
   flowRate: number;
@@ -52,6 +53,7 @@ const DripZonesScreen = () => {
       } else if (zones) {
         setLocalZones(
           (zones ?? []).map((z: any) => ({
+            userId: z.userId,
             id: z.id,
             name: z.name,
             status: z.status ?? 'inactive',
@@ -74,6 +76,7 @@ const DripZonesScreen = () => {
       if (zones) {
         setLocalZones(
           (zones ?? []).map((z: any) => ({
+            userId: z.userId,
             id: z.id,
             name: z.name,
             status: z.status ?? 'inactive',
@@ -131,34 +134,37 @@ const DripZonesScreen = () => {
   }, [localZones]);
 
   const toggleZone = (zoneId: string) => {
-  const zone = localZones.find(z => z.id === zoneId);
-  if (!zone) return;
+    const zone = localZones.find(z => z.id === zoneId);
+    if (!zone) return;
 
-  Alert.alert(
-    `Confirmar ${zone.status === 'active' ? 'Desativar' : 'Ativar'}`,
-    `Deseja ${zone.status === 'active' ? 'desativar' : 'ativar'} ${zone.name}?`,
-    [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Confirmar',
-        onPress: () => {
-          const newStatus: 'active' | 'inactive' = zone.status === 'active' ? 'inactive' : 'active';
+    Alert.alert(
+      `Confirmar ${zone.status === 'active' ? 'Desativar' : 'Ativar'}`,
+      `Deseja ${zone.status === 'active' ? 'desativar' : 'ativar'} ${
+        zone.name
+      }?`,
+      [
+        {text: 'Cancelar', style: 'cancel'},
+        {
+          text: 'Confirmar',
+          onPress: () => {
+            const newStatus: 'active' | 'inactive' =
+              zone.status === 'active' ? 'inactive' : 'active';
 
-          setLocalZones(prev =>
-            prev.map(z => {
-              if (z.id === zoneId) {
-                const updatedZone = { ...z, status: newStatus };
-                toggleZoneStatus(updatedZone);
-                return updatedZone;
-              }
-              return z;
-            })
-          );
+            setLocalZones(prev =>
+              prev.map(z => {
+                if (z.id === zoneId) {
+                  const updatedZone = {...z, status: newStatus};
+                  toggleZoneStatus(updatedZone);
+                  return updatedZone;
+                }
+                return z;
+              }),
+            );
+          },
         },
-      },
-    ]
-  );
-};
+      ],
+    );
+  };
 
   const deleteZone = (zoneId: string) => {
     Alert.alert(
@@ -192,7 +198,9 @@ const DripZonesScreen = () => {
       .filter(z => z.nextWatering)
       .map(z => new Date(z.nextWatering!));
     return nextWaterings.length > 0
-      ? new Date(Math.min(...nextWaterings.map(d => d.getTime()))).toLocaleString()
+      ? new Date(
+          Math.min(...nextWaterings.map(d => d.getTime())),
+        ).toLocaleString()
       : 'Nenhuma irrigação agendada';
   };
 
@@ -334,8 +342,10 @@ const DripZonesScreen = () => {
     </View>
   );
 
-  if (isLoading) return <ActivityIndicator size="large" style={styles.loader} />;
-  if (error) return <Text style={styles.errorText}>Erro ao carregar zonas</Text>;
+  if (isLoading)
+    return <ActivityIndicator size="large" style={styles.loader} />;
+  if (error)
+    return <Text style={styles.errorText}>Erro ao carregar zonas</Text>;
 
   return (
     <View style={styles.container}>
@@ -418,7 +428,7 @@ const styles = StyleSheet.create({
     padding: 15,
     marginBottom: 15,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
@@ -510,7 +520,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 5,

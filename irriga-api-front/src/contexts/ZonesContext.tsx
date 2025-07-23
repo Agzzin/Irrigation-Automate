@@ -1,8 +1,9 @@
-import React, { createContext, useContext, ReactNode } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import React, {createContext, useContext, ReactNode} from 'react';
+import {useQuery, useQueryClient} from '@tanstack/react-query';
 
 interface Zone {
   id: string;
+  userId: string;
   name: string;
   status: 'active' | 'inactive' | 'error';
   flowRate?: number;
@@ -40,9 +41,14 @@ interface ZonesProviderProps {
   children: ReactNode;
 }
 
-export function ZonesProvider({ children }: ZonesProviderProps) {
+export function ZonesProvider({children}: ZonesProviderProps) {
   const queryClient = useQueryClient();
-  const { data: zones, isLoading, error, refetch } = useQuery({
+  const {
+    data: zones,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ['zones'],
     queryFn: fetchZones,
     staleTime: 1000 * 60 * 5,
@@ -51,23 +57,24 @@ export function ZonesProvider({ children }: ZonesProviderProps) {
 
   const toggleZoneStatus = async (zone: Zone) => {
     const newStatus = zone.status === 'active' ? 'inactive' : 'active';
-    await fetch(`https://a4e71c2d9346.ngrok-free.app/api/zones/${zone.id}`, {
+    await fetch(`https://da60b2d4ed8d.ngrok-free.app/api/zones/${zone.id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...zone, status: newStatus }),
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({...zone, status: newStatus}),
     });
-    await queryClient.invalidateQueries({ queryKey: ['zones'] });
+    await queryClient.invalidateQueries({queryKey: ['zones']});
   };
 
   return (
-    <ZonesContext.Provider value={{ zones, isLoading, error, toggleZoneStatus, refetch }}>
+    <ZonesContext.Provider
+      value={{zones, isLoading, error, toggleZoneStatus, refetch}}>
       {children}
     </ZonesContext.Provider>
   );
 }
 
 async function fetchZones(): Promise<Zone[]> {
-  const res = await fetch('https://a4e71c2d9346.ngrok-free.app/api/zones');
+  const res = await fetch('https://da60b2d4ed8d.ngrok-free.app/api/zones');
   if (!res.ok) throw new Error('Erro ao buscar zonas');
   return res.json();
 }

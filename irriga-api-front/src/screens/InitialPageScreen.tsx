@@ -22,18 +22,23 @@ import Power from '../../assets/icons/power.svg';
 import Water from '../../assets/icons/water.svg';
 
 import {useZones} from '../contexts/ZonesContext';
+import {useAuth} from '../contexts/AuthContext';
+
+const {width} = Dimensions.get('window');
+const CARD_MARGIN = 8;
+const CONTAINER_PADDING = 16;
+const CARDS_PER_ROW = 3;
+const ZONE_CARD_WIDTH =
+  (width - CONTAINER_PADDING * 2 - CARD_MARGIN * (CARDS_PER_ROW - 1) * 2) /
+  CARDS_PER_ROW;
 
 const MIN_UMIDADE = 40;
 
-const { width } = Dimensions.get('window');
-const CARD_MARGIN = 8; 
-const CONTAINER_PADDING = 16; 
-const CARDS_PER_ROW = 3;
-
-const ZONE_CARD_WIDTH = 
-  (width - (CONTAINER_PADDING * 2) - (CARD_MARGIN * (CARDS_PER_ROW - 1) * 2)) / CARDS_PER_ROW;
 const InitialPageScreen = () => {
   const {zones, isLoading: loadingZones, error: errorZones} = useZones();
+  const {user} = useAuth();
+
+  const userZones = zones ?? [];
 
   const [switchIrrigationMode, setSwitchIrrigationMode] = useState(false);
   const [switchPauseRain, setSwitchPauseRain] = useState(false);
@@ -52,9 +57,6 @@ const InitialPageScreen = () => {
   const [isOnline, setIsOnline] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const MIN_UMIDADE = 40;
-
-  // Carregar configurações do AsyncStorage
   useEffect(() => {
     const carregarConfiguracoes = async () => {
       try {
@@ -74,7 +76,6 @@ const InitialPageScreen = () => {
     carregarConfiguracoes();
   }, []);
 
-  // Salvar configurações no AsyncStorage
   useEffect(() => {
     AsyncStorage.setItem('modoAuto', switchIrrigationMode.toString());
   }, [switchIrrigationMode]);
@@ -88,7 +89,6 @@ const InitialPageScreen = () => {
     AsyncStorage.setItem('notificacoes', switchNotifications.toString());
   }, [switchNotifications]);
 
-  // Fetch dados sensores
   const fetchSensorData = useCallback(async () => {
     try {
       setLoadingSensores(true);
@@ -130,7 +130,6 @@ const InitialPageScreen = () => {
     }
   }, []);
 
-  // Fetch estado da bomba
   const fetchEstadoBomba = useCallback(async () => {
     try {
       const response = await fetch('http://192.168.0.100/bomba');
@@ -148,7 +147,6 @@ const InitialPageScreen = () => {
     }
   }, []);
 
-  // Check conexão
   const checkConexao = useCallback(async () => {
     try {
       const response = await fetch('http://192.168.0.100/ping');
@@ -170,7 +168,6 @@ const InitialPageScreen = () => {
     return () => clearInterval(interval);
   }, [fetchSensorData, fetchEstadoBomba, checkConexao]);
 
-  // Automatizar Irrigação conforme lógica
   useEffect(() => {
     const automatizarIrrigacao = async () => {
       if (!switchIrrigationMode) return;
@@ -221,7 +218,6 @@ const InitialPageScreen = () => {
     switchNotifications,
   ]);
 
-  // Função para ligar/desligar bomba
   const toggleBomba = useCallback(
     async (forcarEstado?: boolean) => {
       if (bombaLigada === null && forcarEstado === undefined) return;
@@ -252,7 +248,6 @@ const InitialPageScreen = () => {
     [bombaLigada, fetchEstadoBomba, isOnline],
   );
 
-  // Pull to refresh
   const onRefresh = () => {
     setRefreshing(true);
     fetchSensorData();
@@ -260,7 +255,6 @@ const InitialPageScreen = () => {
     checkConexao();
   };
 
-  // Tratamento de loading e erro das zonas
   if (loadingZones) {
     return (
       <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
@@ -344,7 +338,6 @@ const InitialPageScreen = () => {
           <Text style={styles.errorText}>{sensorError}</Text>
         </View>
       )}
-
       <View style={styles.cardRow}>
         <View style={styles.card}>
           <SoilMoisture width={30} height={30} />
@@ -391,9 +384,9 @@ const InitialPageScreen = () => {
       </View>
 
       <View style={[styles.zonasContainer, {paddingHorizontal: CARD_MARGIN}]}>
-        {Array.isArray(zones) && zones.length > 0 ? (
+        {Array.isArray(userZones) && userZones.length > 0 ? (
           <View style={styles.zonasGrid}>
-            {zones.map(zona => (
+            {userZones.map(zona => (
               <View
                 key={zona.id}
                 style={[
@@ -569,8 +562,8 @@ const styles = StyleSheet.create({
 
   zonasContainer: {
     width: '100%',
-    paddingHorizontal:CONTAINER_PADDING,
-    alignItems:'center',
+    paddingHorizontal: CONTAINER_PADDING,
+    alignItems: 'center',
   },
   zonasGrid: {
     flexDirection: 'row',
