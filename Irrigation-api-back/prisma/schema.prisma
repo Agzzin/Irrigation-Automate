@@ -27,6 +27,7 @@ model Usuario {
   leituras            Leitura[]
   passwordResetTokens PasswordResetToken[]
   dispositivos        Dispositivo[]
+  zones               Zone[]
 }
 
 model Bomba {
@@ -77,7 +78,10 @@ model Zone {
   scheduleId     String    @unique
   schedule       Schedule  @relation(fields: [scheduleId], references: [id])
 
-  historyEvents ZoneOnHistoryEvent[] // relação N:N
+  historyEvents ZoneOnHistoryEvent[]
+
+  userId         Int    
+  user           Usuario   @relation(fields: [userId], references: [id])
 }
 
 model Schedule {

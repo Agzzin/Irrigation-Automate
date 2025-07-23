@@ -1,12 +1,17 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { authenticateToken } from '../../middlewares/auth'; 
 
 const prisma = new PrismaClient();
 const router = Router();
 
-router.get('/', async (_req, res) => {
+
+router.get('/', authenticateToken, async (req, res) => {
   try {
-    const zones = await prisma.zone.findMany({ include: { schedule: true } });
+    const zones = await prisma.zone.findMany({
+      where: { userId: req.userId },
+      include: { schedule: true },
+    });
     res.json(zones);
   } catch (error) {
     console.error(error);
@@ -14,17 +19,18 @@ router.get('/', async (_req, res) => {
   }
 });
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   try {
-    const zone = await prisma.zone.findUnique({
-      where: { id },
+    const zone = await prisma.zone.findFirst({
+      where: { id, userId: req.userId },
       include: { schedule: true },
     });
+
     if (!zone) {
-      res.status(404).json({ error: 'Zona não encontrada' });
-      return;
+      return res.status(404).json({ error: 'Zona não encontrada' });
     }
+
     res.json(zone);
   } catch (error) {
     console.error(error);
@@ -32,7 +38,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   const {
     name,
     status,
@@ -46,7 +52,7 @@ router.post('/', async (req, res) => {
   } = req.body;
 
   try {
-    const newSchedule = await prisma.schedule.create({
+    const createdSchedule = await prisma.schedule.create({
       data: {
         duration: schedule.duration,
         frequency: schedule.frequency,
@@ -64,7 +70,8 @@ router.post('/', async (req, res) => {
         emitterSpacing,
         lastWatered: lastWatered ? new Date(lastWatered) : null,
         nextWatering: nextWatering ? new Date(nextWatering) : null,
-        scheduleId: newSchedule.id,
+        userId: req.userId!,
+        scheduleId: createdSchedule.id,  
       },
       include: { schedule: true },
     });
@@ -76,7 +83,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.put('/:id', async (req, res) => {
+
+router.put('/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const {
     name,
@@ -91,10 +99,12 @@ router.put('/:id', async (req, res) => {
   } = req.body;
 
   try {
-    const zone = await prisma.zone.findUnique({ where: { id } });
+    const zone = await prisma.zone.findFirst({
+      where: { id, userId: req.userId },
+    });
+
     if (!zone) {
-      res.status(404).json({ error: 'Zona não encontrada' });
-      return;
+      return res.status(404).json({ error: 'Zona não encontrada' });
     }
 
     await prisma.schedule.update({
@@ -128,10 +138,13 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   try {
-    const zone = await prisma.zone.findUnique({ where: { id } });
+    const zone = await prisma.zone.findFirst({
+      where: { id, userId: req.userId },
+    });
+
     if (!zone) {
       return res.status(404).json({ error: 'Zona não encontrada' });
     }
@@ -149,7 +162,7 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-router.get('/:id/history', async (req, res) => {
+router.get('/:id/history', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { startDate, endDate, eventType } = req.query;
 
@@ -176,7 +189,7 @@ router.get('/:id/history', async (req, res) => {
   }
 });
 
-router.post('/:id/history', async (req, res) => {
+router.post('/:id/history', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const {
     eventType,
