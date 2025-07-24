@@ -1,10 +1,14 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authenticateToken } from '../../middlewares/auth'; 
+import { authenticateToken } from '../../middlewares/auth';
+import {
+  createZoneSchema,
+  updateZoneSchema,
+  createHistoryEventSchema,
+} from '../../controllers/zodSchemas';
 
 const prisma = new PrismaClient();
 const router = Router();
-
 
 router.get('/', authenticateToken, async (req, res) => {
   try {
@@ -39,6 +43,14 @@ router.get('/:id', authenticateToken, async (req, res) => {
 });
 
 router.post('/', authenticateToken, async (req, res) => {
+  const parsed = createZoneSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: 'Dados inválidos',
+      issues: parsed.error.format(),
+    });
+  }
+
   const {
     name,
     status,
@@ -49,7 +61,7 @@ router.post('/', authenticateToken, async (req, res) => {
     lastWatered,
     nextWatering,
     schedule,
-  } = req.body;
+  } = parsed.data;
 
   try {
     const createdSchedule = await prisma.schedule.create({
@@ -71,7 +83,7 @@ router.post('/', authenticateToken, async (req, res) => {
         lastWatered: lastWatered ? new Date(lastWatered) : null,
         nextWatering: nextWatering ? new Date(nextWatering) : null,
         userId: req.userId!,
-        scheduleId: createdSchedule.id,  
+        scheduleId: createdSchedule.id,
       },
       include: { schedule: true },
     });
@@ -83,9 +95,15 @@ router.post('/', authenticateToken, async (req, res) => {
   }
 });
 
-
 router.put('/:id', authenticateToken, async (req, res) => {
-  const { id } = req.params;
+  const parsed = updateZoneSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: 'Dados inválidos',
+      issues: parsed.error.format(),
+    });
+  }
+
   const {
     name,
     status,
@@ -96,28 +114,30 @@ router.put('/:id', authenticateToken, async (req, res) => {
     lastWatered,
     nextWatering,
     schedule,
-  } = req.body;
+  } = parsed.data;
 
   try {
     const zone = await prisma.zone.findFirst({
-      where: { id, userId: req.userId },
+      where: { id: req.params.id, userId: req.userId },
     });
 
     if (!zone) {
       return res.status(404).json({ error: 'Zona não encontrada' });
     }
 
-    await prisma.schedule.update({
-      where: { id: zone.scheduleId },
-      data: {
-        duration: schedule.duration,
-        frequency: schedule.frequency,
-        days: schedule.days || [],
-      },
-    });
+    if (schedule) {
+      await prisma.schedule.update({
+        where: { id: zone.scheduleId },
+        data: {
+          duration: schedule.duration,
+          frequency: schedule.frequency,
+          days: schedule.days || [],
+        },
+      });
+    }
 
     const updatedZone = await prisma.zone.update({
-      where: { id },
+      where: { id: req.params.id },
       data: {
         name,
         status,
@@ -190,7 +210,14 @@ router.get('/:id/history', authenticateToken, async (req, res) => {
 });
 
 router.post('/:id/history', authenticateToken, async (req, res) => {
-  const { id } = req.params;
+  const parsed = createHistoryEventSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: 'Dados inválidos',
+      issues: parsed.error.format(),
+    });
+  }
+
   const {
     eventType,
     action,
@@ -199,9 +226,11 @@ router.post('/:id/history', authenticateToken, async (req, res) => {
     temperature,
     weather,
     source,
-  } = req.body;
+  } = parsed.data;
 
   try {
+    const data = createHistoryEventSchema.parse(req.body);
+
     const newEvent = await prisma.historyEvent.create({
       data: {
         eventType,
@@ -216,7 +245,7 @@ router.post('/:id/history', authenticateToken, async (req, res) => {
 
     await prisma.zoneOnHistoryEvent.create({
       data: {
-        zoneId: id,
+        zoneId: req.params.id,
         historyEventId: newEvent.id,
       },
     });
