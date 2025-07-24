@@ -16,31 +16,18 @@ import {useZones} from '../contexts/ZonesContext';
 import Snackbar from 'react-native-snackbar';
 import {Picker} from '@react-native-picker/picker';
 
-export type DripZone = {
-  id: string;
-  userId: string;
-  name: string;
-  status: 'active' | 'inactive' | 'error';
-  flowRate: number;
-  pressure: number;
-  emitterCount: number;
-  emitterSpacing: number;
-  lastWatered?: string;
-  nextWatering?: string;
-  schedule: {
-    duration: number;
-    frequency: 'daily' | 'weekly' | 'custom';
-    days?: number[];
-  };
-};
+import {
+  DripZoneArraySchema,
+  DripZone as DripZoneType,
+} from '../controllers/zodSchema';
 
 const STORAGE_KEY = '@drip_zones';
 
 const DripZonesScreen = () => {
   const {zones, isLoading, error, toggleZoneStatus, refetch} = useZones();
   const [modalVisible, setModalVisible] = useState(false);
-  const [currentZone, setCurrentZone] = useState<DripZone | null>(null);
-  const [localZones, setLocalZones] = useState<DripZone[]>([]);
+  const [currentZone, setCurrentZone] = useState<DripZoneType | null>(null);
+  const [localZones, setLocalZones] = useState<DripZoneType[]>([]);
   const [sortBy, setSortBy] = useState<'name' | 'status'>('name');
   const [isSaving, setIsSaving] = useState(false);
 
@@ -48,56 +35,34 @@ const DripZonesScreen = () => {
     try {
       const jsonValue = await AsyncStorage.getItem(STORAGE_KEY);
       if (jsonValue != null) {
-        const savedZones = JSON.parse(jsonValue);
-        setLocalZones(savedZones);
+        const parsed = JSON.parse(jsonValue);
+        const validated = DripZoneArraySchema.parse(parsed);
+        setLocalZones(validated);
       } else if (zones) {
-        setLocalZones(
-          (zones ?? []).map((z: any) => ({
-            userId: z.userId,
-            id: z.id,
-            name: z.name,
-            status: z.status ?? 'inactive',
-            flowRate: z.flowRate ?? 0,
-            pressure: z.pressure ?? 0,
-            emitterCount: z.emitterCount ?? 0,
-            emitterSpacing: z.emitterSpacing ?? 0,
-            lastWatered: z.lastWatered,
-            nextWatering: z.nextWatering,
-            schedule: {
-              duration: z.schedule?.duration ?? 0,
-              frequency: z.schedule?.frequency ?? 'daily',
-              days: z.schedule?.days ?? [],
-            },
-          })),
-        );
+        const validated = DripZoneArraySchema.parse(zones);
+        setLocalZones(validated);
       }
     } catch (e) {
-      console.error('Erro ao carregar zonas do AsyncStorage', e);
+      console.error('Erro ao validar zonas do AsyncStorage', e);
+      await AsyncStorage.removeItem(STORAGE_KEY);
+      Snackbar.show({
+        text: 'Erro ao carregar zonas locais. Dados foram limpos.',
+        duration: Snackbar.LENGTH_LONG,
+        backgroundColor: 'red',
+      });
+
       if (zones) {
-        setLocalZones(
-          (zones ?? []).map((z: any) => ({
-            userId: z.userId,
-            id: z.id,
-            name: z.name,
-            status: z.status ?? 'inactive',
-            flowRate: z.flowRate ?? 0,
-            pressure: z.pressure ?? 0,
-            emitterCount: z.emitterCount ?? 0,
-            emitterSpacing: z.emitterSpacing ?? 0,
-            lastWatered: z.lastWatered,
-            nextWatering: z.nextWatering,
-            schedule: {
-              duration: z.schedule?.duration ?? 0,
-              frequency: z.schedule?.frequency ?? 'daily',
-              days: z.schedule?.days ?? [],
-            },
-          })),
-        );
+        try {
+          const fallback = DripZoneArraySchema.parse(zones);
+          setLocalZones(fallback);
+        } catch {
+          setLocalZones([]);
+        }
       }
     }
   };
 
-  const saveZones = async (zonesToSave: DripZone[]) => {
+  const saveZones = async (zonesToSave: DripZoneType[]) => {
     try {
       const jsonValue = JSON.stringify(zonesToSave);
       await AsyncStorage.setItem(STORAGE_KEY, jsonValue);
@@ -176,7 +141,7 @@ const DripZonesScreen = () => {
           text: 'Deletar',
           style: 'destructive',
           onPress: () => {
-            setLocalZones(prevZones => prevZones.filter(z => z.id !== zoneId));
+            setLocalZones(prev => prev.filter(z => z.id !== zoneId));
             Snackbar.show({
               text: 'Zona deletada com sucesso!',
               duration: Snackbar.LENGTH_SHORT,
@@ -184,7 +149,6 @@ const DripZonesScreen = () => {
           },
         },
       ],
-      {cancelable: true},
     );
   };
 
@@ -204,7 +168,7 @@ const DripZonesScreen = () => {
       : 'Nenhuma irrigação agendada';
   };
 
-  const handleSaveZone = async (zone: DripZone) => {
+  const handleSaveZone = async (zone: DripZoneType) => {
     if (!zone.name.trim()) {
       Alert.alert('Erro', 'O nome da zona não pode estar vazio.');
       return;
@@ -224,6 +188,7 @@ const DripZonesScreen = () => {
         ...zone,
         status: zone.status || 'inactive',
       };
+
       const response = await fetch(
         'https://a4e71c2d9346.ngrok-free.app/api/zones',
         {
@@ -232,6 +197,7 @@ const DripZonesScreen = () => {
           body: JSON.stringify(zoneToSend),
         },
       );
+
       const savedZone = await response.json();
 
       if (typeof refetch === 'function') {
@@ -246,6 +212,7 @@ const DripZonesScreen = () => {
           return [...prev, savedZone];
         }
       });
+
       Snackbar.show({
         text: 'Zona salva com sucesso!',
         duration: Snackbar.LENGTH_SHORT,
@@ -264,7 +231,7 @@ const DripZonesScreen = () => {
     }
   };
 
-  const renderZoneItem = ({item}: {item: DripZone}) => (
+  const renderZoneItem = ({item}: {item: DripZoneType}) => (
     <View style={styles.zoneCard}>
       <View style={styles.zoneHeader}>
         <MaterialIcons
@@ -405,7 +372,6 @@ const DripZonesScreen = () => {
     </View>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
