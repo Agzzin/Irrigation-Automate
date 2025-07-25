@@ -3,12 +3,18 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { enviarEmail } from '../utils/email';
 import { RequestHandler } from 'express';
+import { solicitarRecuperacaoSchema, redefinirSenhaSchema } from '../controllers/zodSchemas';
 
 const prisma = new PrismaClient();
 
 export const solicitarRecuperacaoSenha: RequestHandler = async (req, res, next) => {
   try {
-    const { email } = req.body;
+    const parseResult = solicitarRecuperacaoSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return res.status(400).json({ errors: parseResult.error.flatten().fieldErrors });
+    }
+
+    const { email } = parseResult.data;
 
     const usuario = await prisma.usuario.findUnique({ where: { email } });
     if (!usuario) {
@@ -33,14 +39,18 @@ export const solicitarRecuperacaoSenha: RequestHandler = async (req, res, next) 
 
 export const redefinirSenha: RequestHandler = async (req, res, next) => {
   try {
-    const { token, novaSenha } = req.body;
+    const parseResult = redefinirSenhaSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return res.status(400).json({ errors: parseResult.error.flatten().fieldErrors });
+    }
+
+    const { token, novaSenha } = parseResult.data;
 
     const payload = jwt.verify(token, process.env.JWT_SECRET!) as any;
 
     const usuario = await prisma.usuario.findUnique({ where: { id: payload.userId } });
     if (!usuario) {
-      res.status(400).json({ message: 'Usuário não encontrado.' });
-      return;
+      return res.status(400).json({ message: 'Usuário não encontrado.' });
     }
 
     const senhaHash = await bcrypt.hash(novaSenha, 10);

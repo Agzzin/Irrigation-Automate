@@ -29,3 +29,15 @@ export const createHistoryEventSchema = z.object({
   temperature: z.number().optional(),
   weather: z.string().optional(),
 });
+
+export const solicitarRecuperacaoSchema = z.object({
+  email: z.string().email('E-mail inválido'),
+});
+
+export const redefinirSenhaSchema = z.object({
+  token: z.string().min(1, 'Token é obrigatório'),
+  novaSenha: z.string().min(6, 'A nova senha deve ter ao menos 6 caracteres'),
+});
+
+export type SolicitarRecuperacaoDTO = z.infer<typeof solicitarRecuperacaoSchema>;
+export type RedefinirSenhaDTO = z.infer<typeof redefinirSenhaSchema>;

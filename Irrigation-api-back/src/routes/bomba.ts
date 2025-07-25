@@ -1,10 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../prismaClient';
-import { authRoutes } from '../middlewares/auth';
+import { authenticateToken } from '../middlewares/auth';
 
 const router = Router();
 
-router.get('/', authRoutes, async (req: Request, res: Response): Promise<void> => {
+router.get('/', authenticateToken, async (req: Request, res: Response): Promise<void> => {
   const userId = req.userId;
   const tenantId = req.tenantId;
   if (!userId || !tenantId) {
@@ -27,7 +27,7 @@ router.get('/', authRoutes, async (req: Request, res: Response): Promise<void> =
   }
 });
 
-router.post('/', authRoutes, async (req: Request, res: Response): Promise<void> => {
+router.post('/', authenticateToken, async (req: Request, res: Response): Promise<void> => {
   const userId = req.userId;
   if (!userId) {
     res.status(401).json({ msg: 'Usuário não autenticado' });
@@ -55,7 +55,7 @@ router.post('/', authRoutes, async (req: Request, res: Response): Promise<void> 
   }
 });
 
-router.put('/:id', authRoutes, async (req: Request, res: Response): Promise<void> => {
+router.put('/:id', authenticateToken, async (req: Request, res: Response): Promise<void> => {
   const userId = req.userId;
   const tenantId = req.tenantId;
   const bombaId = Number(req.params.id);
@@ -86,7 +86,7 @@ router.put('/:id', authRoutes, async (req: Request, res: Response): Promise<void
   }
 });
 
-router.delete('/:id', authRoutes, async (req: Request, res: Response): Promise<void> => {
+router.delete('/:id', authenticateToken, async (req: Request, res: Response): Promise<void> => {
   const userId = req.userId;
   const tenantId = req.tenantId;
   const bombaId = Number(req.params.id);
