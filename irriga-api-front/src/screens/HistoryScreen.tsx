@@ -24,6 +24,7 @@ import {Share} from 'react-native';
 import Snackbar from 'react-native-snackbar';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import RNHTMLtoPDF from 'react-native-html-to-pdf';
+import { validateHistoryFilters, safeValidateHistoryFilters  } from '../controllers/zodSchema';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -71,82 +72,89 @@ const HistoryScreen: React.FC = () => {
   };
 
   const refreshData = async () => {
-    try {
-      setRefreshing(true);
-      
-      // Prepara os filtros para a API
-      const apiFilters: {
-        startDate?: string;
-        endDate?: string;
-        eventType?: string;
-      } = {};
-      
-      if (filters.zone !== 'all') {
-        // Se um zona específica foi selecionada, usamos o endpoint com zoneId
-        const historyData = await getIrrigationHistory(filters.zone, {
-          startDate: filters.startDate.toISOString(),
-          endDate: filters.endDate.toISOString(),
-          eventType: filters.type !== 'all' ? filters.type : undefined,
-        });
-        setEvents(historyData);
-      } else {
-        // Se "Todas as zonas" foi selecionada, usamos o endpoint geral
-        if (filters.startDate) {
-          apiFilters.startDate = filters.startDate.toISOString();
-        }
-        if (filters.endDate) {
-          apiFilters.endDate = filters.endDate.toISOString();
-        }
-        if (filters.type !== 'all') {
-          apiFilters.eventType = filters.type;
-        }
-        
-        const historyData = await getIrrigationHistory('all', apiFilters);
-        setEvents(historyData);
+  try {
+    setRefreshing(true);
+
+    const validFilters = validateHistoryFilters(filters);
+
+    const apiFilters: {
+      startDate?: string;
+      endDate?: string;
+      eventType?: string;
+    } = {};
+
+    if (validFilters.zone !== 'all') {
+      const historyData = await getIrrigationHistory(validFilters.zone, {
+        startDate: validFilters.startDate.toISOString(),
+        endDate: validFilters.endDate.toISOString(),
+        eventType: validFilters.type !== 'all' ? validFilters.type : undefined,
+      });
+      setEvents(historyData);
+    } else {
+      if (validFilters.startDate) {
+        apiFilters.startDate = validFilters.startDate.toISOString();
       }
-      
-      setPage(1);
-    } catch (error) {
-      console.error('Erro ao atualizar dados:', error);
-      Alert.alert('Erro', 'Não foi possível carregar o histórico');
-    } finally {
-      setRefreshing(false);
+      if (validFilters.endDate) {
+        apiFilters.endDate = validFilters.endDate.toISOString();
+      }
+      if (validFilters.type !== 'all') {
+        apiFilters.eventType = validFilters.type;
+      }
+
+      const historyData = await getIrrigationHistory('all', apiFilters);
+      setEvents(historyData);
     }
-  };
+
+    setPage(1);
+  } catch (error: any) {
+    console.error('Erro ao atualizar dados:', error);
+    if (error?.issues) {
+      Alert.alert('Erro de validação', 'Verifique os filtros inseridos.');
+    } else {
+      Alert.alert('Erro', 'Não foi possível carregar o histórico');
+    }
+  } finally {
+    setRefreshing(false);
+  }
+};
+
 
   const applyFilters = useCallback(
-    (data: HistoryEvent[]) => {
-      let result = [...data];
+  (data: HistoryEvent[]) => {
+    const parsedFilters = safeValidateHistoryFilters(filters);
+    if (!parsedFilters) return;
 
-      // Filtro de busca
-      if (filters.searchTerm) {
-        const term = filters.searchTerm.toLowerCase();
-        result = result.filter(
-          event =>
-            event.action.toLowerCase().includes(term) ||
-            event.zones.some(zone => zone.name.toLowerCase().includes(term)) ||
-            event.source.toLowerCase().includes(term) ||
-            (event.weather && event.weather.toLowerCase().includes(term)),
-        );
-      }
+    let result = [...data];
 
-      // Filtro de duração
-      if (filters.minDuration) {
-        const min = parseInt(filters.minDuration, 10);
-        result = result.filter(event => event.duration >= min);
-      }
+    // Filtro de busca
+    if (parsedFilters.searchTerm) {
+      const term = parsedFilters.searchTerm.toLowerCase();
+      result = result.filter(
+        event =>
+          event.action.toLowerCase().includes(term) ||
+          event.zones.some(zone => zone.name.toLowerCase().includes(term)) ||
+          event.source.toLowerCase().includes(term) ||
+          (event.weather && event.weather.toLowerCase().includes(term)),
+      );
+    }
 
-      if (filters.maxDuration) {
-        const max = parseInt(filters.maxDuration, 10);
-        result = result.filter(event => event.duration <= max);
-      }
+    // Filtro de duração
+    if (parsedFilters.minDuration) {
+      const min = parseInt(parsedFilters.minDuration, 10);
+      result = result.filter(event => event.duration >= min);
+    }
 
-      setFilteredEvents(result);
-      setDisplayedEvents(result.slice(0, ITEMS_PER_PAGE));
-      setHasMore(result.length > ITEMS_PER_PAGE);
-    },
-    [filters.searchTerm, filters.minDuration, filters.maxDuration],
-  );
+    if (parsedFilters.maxDuration) {
+      const max = parseInt(parsedFilters.maxDuration, 10);
+      result = result.filter(event => event.duration <= max);
+    }
+
+    setFilteredEvents(result);
+    setDisplayedEvents(result.slice(0, ITEMS_PER_PAGE));
+    setHasMore(result.length > ITEMS_PER_PAGE);
+  },
+  [filters],
+);
 
   useEffect(() => {
     loadInitialData();

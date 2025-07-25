@@ -54,8 +54,37 @@ export function safeParse<T>(schema: z.ZodSchema<T>, data: unknown): T | null {
   return result.data;
 }
 
+export const historyFilterSchema = z.object({
+  date: z.string().optional(),
+  startDate: z.date(),
+  endDate: z.date(),
+  zone: z.string(),
+  type: z.string(),
+  searchTerm: z.string(),
+  minDuration: z.string().optional(),
+  maxDuration: z.string().optional(),
+});
+
+export const validateHistoryFilters = (filters: any): HistoryFilter => {
+  const result = historyFilterSchema.safeParse(filters);
+  if (!result.success) {
+    throw result.error;
+  }
+  return result.data;
+};
+
+export const safeValidateHistoryFilters = (filters: any): HistoryFilter | undefined => {
+  const result = historyFilterSchema.safeParse(filters);
+  if (!result.success) {
+    console.warn('Filtros inválidos (local):', result.error.format());
+    return undefined;
+  }
+  return result.data;
+};
+
+
+
 export const DripZoneArraySchema = z.array(DripZoneSchema);
-
-
 export type DripZone = z.infer<typeof DripZoneSchema>;
 export type Schedule = z.infer<typeof ScheduleSchema>;
+export type HistoryFilter = z.infer<typeof historyFilterSchema>;
