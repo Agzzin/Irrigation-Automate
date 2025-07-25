@@ -12,6 +12,15 @@ import {
   Dimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import z from 'zod';
+
+import { 
+  sensorDataSchema, 
+  bombaStateSchema, 
+  configSchema, 
+  zoneSchema,
+  safeParse 
+} from '../controllers/zodSchema'; 
 
 import WifiIcon from '../../assets/icons/wifi.svg';
 import WaterDrop from '../../assets/icons/water_drop.svg';
@@ -38,7 +47,7 @@ const InitialPageScreen = () => {
   const {zones, isLoading: loadingZones, error: errorZones} = useZones();
   const {user} = useAuth();
 
-  const userZones = zones ?? [];
+  const userZones = zones ? safeParse(z.array(zoneSchema), zones) ?? [] : [];
 
   const [switchIrrigationMode, setSwitchIrrigationMode] = useState(false);
   const [switchPauseRain, setSwitchPauseRain] = useState(false);
@@ -65,10 +74,19 @@ const InitialPageScreen = () => {
         const umidade = await AsyncStorage.getItem('umidadeMin');
         const notificacoes = await AsyncStorage.getItem('notificacoes');
 
-        setSwitchIrrigationMode(modoAuto === 'true');
-        setSwitchPauseRain(chuva === 'true');
-        setSwitchMinHumidity(umidade === 'true');
-        setSwitchNotifications(notificacoes === 'true');
+        const config = safeParse(configSchema, {
+          modoAuto: modoAuto === 'true',
+          pausarChuva: chuva === 'true',
+          umidadeMin: umidade === 'true',
+          notificacoes: notificacoes === 'true',
+        });
+
+        if (config) {
+          setSwitchIrrigationMode(config.modoAuto);
+          setSwitchPauseRain(config.pausarChuva);
+          setSwitchMinHumidity(config.umidadeMin);
+          setSwitchNotifications(config.notificacoes);
+        }
       } catch (e) {
         console.warn('Erro ao carregar configurações:', e);
       }
@@ -76,6 +94,7 @@ const InitialPageScreen = () => {
     carregarConfiguracoes();
   }, []);
 
+  
   useEffect(() => {
     AsyncStorage.setItem('modoAuto', switchIrrigationMode.toString());
   }, [switchIrrigationMode]);
@@ -89,7 +108,7 @@ const InitialPageScreen = () => {
     AsyncStorage.setItem('notificacoes', switchNotifications.toString());
   }, [switchNotifications]);
 
-  const fetchSensorData = useCallback(async () => {
+ const fetchSensorData = useCallback(async () => {
     try {
       setLoadingSensores(true);
       setSensorError(null);
@@ -98,18 +117,15 @@ const InitialPageScreen = () => {
       if (!response.ok) throw new Error('Resposta do sensor inválida');
 
       const data = await response.json();
+      const validatedData = safeParse(sensorDataSchema, data);
 
-      if (
-        typeof data.soilMoisture !== 'number' ||
-        typeof data.temperature !== 'number' ||
-        typeof data.weather !== 'string'
-      ) {
+      if (!validatedData) {
         throw new Error('Dados do sensor inválidos');
       }
 
-      setSoilMoisture(data.soilMoisture);
-      setTemperature(data.temperature);
-      setWeather(data.weather);
+      setSoilMoisture(validatedData.soilMoisture);
+      setTemperature(validatedData.temperature);
+      setWeather(validatedData.weather);
       setLastUpdate(
         new Date().toLocaleString('pt-BR', {
           hour: '2-digit',
@@ -136,11 +152,13 @@ const InitialPageScreen = () => {
       if (!response.ok) throw new Error('Resposta da bomba inválida');
 
       const data = await response.json();
+      const validatedData = safeParse(bombaStateSchema, data);
 
-      if (typeof data.ligada !== 'boolean')
+      if (!validatedData) {
         throw new Error('Dados da bomba inválidos');
+      }
 
-      setBombaLigada(data.ligada);
+      setBombaLigada(validatedData.ligada);
     } catch (error) {
       Alert.alert('Erro', 'Não foi possível obter o estado da bomba.');
       setBombaLigada(null);

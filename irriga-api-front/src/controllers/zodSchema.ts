@@ -20,6 +20,40 @@ export const DripZoneSchema = z.object({
   schedule: ScheduleSchema,
 });
 
+export const sensorDataSchema = z.object({
+  soilMoisture: z.number().min(0).max(100),
+  temperature: z.number().min(-20).max(60),
+  weather: z.string(),
+});
+
+
+export const bombaStateSchema = z.object({
+  ligada: z.boolean(),
+});
+
+
+export const configSchema = z.object({
+  modoAuto: z.boolean(),
+  pausarChuva: z.boolean(),
+  umidadeMin: z.boolean(),
+  notificacoes: z.boolean(),
+});
+
+export const zoneSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  status: z.enum(['active', 'inactive']),
+});
+
+export function safeParse<T>(schema: z.ZodSchema<T>, data: unknown): T | null {
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    console.error('Validation error:', result.error);
+    return null;
+  }
+  return result.data;
+}
+
 export const DripZoneArraySchema = z.array(DripZoneSchema);
 
 
