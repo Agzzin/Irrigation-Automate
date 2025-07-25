@@ -39,5 +39,20 @@ export const redefinirSenhaSchema = z.object({
   novaSenha: z.string().min(6, 'A nova senha deve ter ao menos 6 caracteres'),
 });
 
+ export const signupSchema = z.object({
+  nome: z.string().min(1, 'Nome é obrigatório'),
+  email: z.string().email('Email inválido'),
+  senha: z.string().min(6, 'Senha precisa ter no mínimo 6 caracteres'),
+  tenantId: z.preprocess((val) => {
+    if (typeof val === 'string') return parseInt(val, 10);
+    return val;
+  }, z.number()),
+});
+
+export const loginSchema = z.object({
+  email: z.string().email('Email inválido'),
+  senha: z.string().min(1, 'Senha é obrigatória'),
+});
+
 export type SolicitarRecuperacaoDTO = z.infer<typeof solicitarRecuperacaoSchema>;
 export type RedefinirSenhaDTO = z.infer<typeof redefinirSenhaSchema>;

@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../prismaClient'; 
+import { signupSchema, loginSchema } from '../controllers/zodSchemas';
 
 interface TokenPayload {
   userId: number;
@@ -20,16 +21,13 @@ const router = Router();
 
 router.post('/signup', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { nome, email, senha, tenantId } = req.body;
+    const result = signupSchema.safeParse(req.body);
+    if (!result.success) {
+      res.status(400).json({ message: 'Dados inválidos', errors: result.error.flatten().fieldErrors });
+      return;
+    }
 
-    if (!nome || !email || !senha || !tenantId) {
-      res.status(400).json({ message: 'Nome, email, senha e tenantId são obrigatórios' });
-      return;
-    }
-    if (senha.length < 6) {
-      res.status(400).json({ message: 'Senha precisa ter no mínimo 6 caracteres' });
-      return;
-    }
+    const { nome, email, senha, tenantId } = result.data;
 
     const existe = await prisma.usuario.findUnique({ where: { email } });
     if (existe) {
@@ -60,17 +58,19 @@ router.post('/signup', async (req: Request, res: Response): Promise<void> => {
 
 router.post('/login', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { email, senha } = req.body;
-    if (!email || !senha) {
-      res.status(400).json({ message: 'Faltam credenciais' });
+    const result = loginSchema.safeParse(req.body);
+    if (!result.success) {
+      res.status(400).json({ message: 'Dados inválidos', errors: result.error.flatten().fieldErrors });
       return;
     }
 
-     const user = await prisma.usuario.findUnique({ where: { email } });
-      if (!user || !user.senha || !(await bcrypt.compare(senha, user.senha))) {
+    const { email, senha } = result.data;
+
+    const user = await prisma.usuario.findUnique({ where: { email } });
+    if (!user || !user.senha || !(await bcrypt.compare(senha, user.senha))) {
       res.status(401).json({ message: 'Credenciais inválidas' });
       return;
-  }
+    }
 
     const secret = process.env.JWT_SECRET;
     if (!secret) {
