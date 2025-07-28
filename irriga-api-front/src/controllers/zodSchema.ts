@@ -96,6 +96,10 @@ export const loginSchema = z.object({
   senha: z.string().min(6, { message: 'Senha deve ter ao menos 6 caracteres' }),
 });
 
+export const resetPasswordSchema = z.object({
+  email: z.string().email({ message: 'E-mail inválido' }),
+});
+
 export const DripZoneArraySchema = z.array(DripZoneSchema);
 export type DripZone = z.infer<typeof DripZoneSchema>;
 export type Schedule = z.infer<typeof ScheduleSchema>;

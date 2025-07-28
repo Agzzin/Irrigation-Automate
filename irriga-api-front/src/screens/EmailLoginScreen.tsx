@@ -42,7 +42,6 @@ const EmailLoginScreen: React.FC = () => {
 
   const handleLogin = async () => {
     try {
-      // valida dados com zod
       const data = loginSchema.parse({
         email: email.trim(),
         senha: password.trim(),

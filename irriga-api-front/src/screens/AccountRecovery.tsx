@@ -11,6 +11,8 @@ import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { RootStackParamList } from '../types/RootStackParamList';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { resetPasswordSchema } from '../controllers/zodSchema';
+import { ZodError } from 'zod';
 
 const ResetPasswordScreen = () => {
   const navigation =
@@ -19,20 +21,17 @@ const ResetPasswordScreen = () => {
   const [loading, setLoading] = useState(false);
 
   const handleSendInstructions = async () => {
-    if (email.trim().length === 0) {
-      Alert.alert('Erro', 'Por favor, preencha o e-mail.');
-      return;
-    }
-
-    setLoading(true);
-
     try {
+      resetPasswordSchema.parse({ email: email.trim() });
+
+      setLoading(true);
+
       const response = await fetch(
         'http://localhost:3000/redefinir-senha',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email }),
+          body: JSON.stringify({ email: email.trim() }),
         }
       );
 
@@ -44,12 +43,16 @@ const ResetPasswordScreen = () => {
       } else {
         Alert.alert('Erro', data.message || 'Ocorreu um erro ao enviar o e-mail.');
       }
-    } catch (error) {
-      console.error('Erro ao solicitar recuperação de senha:', error);
-      Alert.alert(
-        'Erro',
-        'Não foi possível se conectar ao servidor. Tente novamente mais tarde.'
-      );
+    } catch (err) {
+      if (err instanceof ZodError) {
+        Alert.alert('Erro de validação',  err.issues[0].message);
+      } else {
+        console.error('Erro ao solicitar recuperação de senha:', err);
+        Alert.alert(
+          'Erro',
+          'Não foi possível se conectar ao servidor. Tente novamente mais tarde.'
+        );
+      }
     } finally {
       setLoading(false);
     }
