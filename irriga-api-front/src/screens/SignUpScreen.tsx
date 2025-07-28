@@ -1,28 +1,25 @@
-import React, {useState, useRef} from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Image,
   TouchableOpacity,
-  TextInput,
   Switch,
-  Animated,
-  KeyboardTypeOptions,
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import {useNavigation} from '@react-navigation/native';
-import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {RootStackParamList} from '../types/RootStackParamList';
-import {useAuth} from '../contexts/AuthContext';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types/RootStackParamList';
 import FloatingLabelInput from '../components/FloatingLabelInput';
+import { signUpSchema } from '../controllers/zodSchema';
+import { z } from 'zod';
 
 type SignUpNav = NativeStackNavigationProp<RootStackParamList, 'InitialPage'>;
 
-const SignUpScreen: React.FC = () => {
+const SignUpScreen = () => {
   const navigation = useNavigation<SignUpNav>();
-  const {login} = useAuth();
 
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
@@ -31,49 +28,37 @@ const SignUpScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   const handleSignUp = async () => {
-    if (!nome.trim() || !email.trim() || !senha.trim()) {
-      Alert.alert('Preencha todos os campos');
-      return;
-    }
-
-    setLoading(true);
     try {
+      const data = signUpSchema.parse({ nome, email, senha, rememberMe });
+
+      setLoading(true);
+
       const response = await fetch(
         'https://8b4e-200-106-218-64.ngrok-free.app/usuarios/signup',
         {
           method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({nome, email, senha}),
-        },
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nome: data.nome,
+            email: data.email,
+            senha: data.senha,
+          }),
+        }
       );
 
       if (!response.ok) {
-        const {message} = await response.json();
+        const { message } = await response.json();
         throw new Error(message || 'Erro ao cadastrar');
       }
 
-      const loginResponse = await fetch(
-        'https://c715-200-106-218-64.ngrok-free.app/usuarios/login',
-        {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({email, senha}),
-        },
-      );
-
-      if (!loginResponse.ok) {
-        const {message} = await loginResponse.json();
-        throw new Error(message || 'Erro no login após cadastro');
-      }
-
-      const loginData = await loginResponse.json();
-
-      await login(loginData.token, loginData.usuario);
-
-      Alert.alert('Sucesso!', 'Conta criada e login realizado com sucesso.');
+      Alert.alert('Sucesso', 'Cadastro realizado!');
       navigation.navigate('InitialPage');
     } catch (err: any) {
-      Alert.alert('Erro', err.message);
+      if (err instanceof z.ZodError) {
+        Alert.alert('Erro de validação', err.issues[0].message);
+      } else {
+        Alert.alert('Erro', err.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -92,7 +77,7 @@ const SignUpScreen: React.FC = () => {
         </View>
       </View>
 
-      <View style={{alignItems: 'center', width: '100%'}}>
+      <View style={{ alignItems: 'center', width: '100%' }}>
         <FloatingLabelInput
           label="NOME"
           value={nome}
@@ -100,7 +85,7 @@ const SignUpScreen: React.FC = () => {
           keyboardType="default"
           autoCapitalize="words"
           placeholderTextColor="#fff"
-          style={[styles.input, {width: '90%'}]}
+          style={[styles.input, { width: '90%' }]}
         />
         <FloatingLabelInput
           label="EMAIL"
@@ -109,7 +94,7 @@ const SignUpScreen: React.FC = () => {
           keyboardType="email-address"
           autoCapitalize="none"
           placeholderTextColor="#fff"
-          style={[styles.input, {width: '90%'}]}
+          style={[styles.input, { width: '90%' }]}
         />
         <FloatingLabelInput
           label="SENHA"
@@ -118,7 +103,7 @@ const SignUpScreen: React.FC = () => {
           secureTextEntry
           autoCapitalize="none"
           placeholderTextColor="#fff"
-          style={[styles.input, {width: '90%'}]}
+          style={[styles.input, { width: '90%' }]}
         />
       </View>
 
@@ -127,10 +112,10 @@ const SignUpScreen: React.FC = () => {
           <Switch
             value={rememberMe}
             onValueChange={setRememberMe}
-            trackColor={{false: '#767577', true: '#00CB21'}}
+            trackColor={{ false: '#767577', true: '#00CB21' }}
             thumbColor={rememberMe ? '#fff' : '#f4f3f4'}
             ios_backgroundColor="#3e3e3e"
-            style={{transform: [{scaleX: 1.0}, {scaleY: 0.8}]}}
+            style={{ transform: [{ scaleX: 1.0 }, { scaleY: 0.8 }] }}
           />
           <Text style={styles.rememberMeText}>
             Eu aceito os termos {'\n'}e condições do app
@@ -143,9 +128,10 @@ const SignUpScreen: React.FC = () => {
       </View>
 
       <TouchableOpacity
-        style={[styles.buttonEntrar, loading && {opacity: 0.6}]}
+        style={[styles.buttonEntrar, loading && { opacity: 0.6 }]}
         onPress={handleSignUp}
-        disabled={loading}>
+        disabled={loading}
+      >
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
@@ -157,6 +143,7 @@ const SignUpScreen: React.FC = () => {
 };
 
 export default SignUpScreen;
+
 
 const styles = StyleSheet.create({
   container: {

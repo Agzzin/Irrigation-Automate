@@ -82,9 +82,17 @@ export const safeValidateHistoryFilters = (filters: any): HistoryFilter | undefi
   return result.data;
 };
 
-
+export const signUpSchema = z.object({
+  nome: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
+  email: z.string().email('E-mail inválido'),
+  senha: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
+  rememberMe: z.boolean().refine(val => val === true, {
+    message: 'Você deve aceitar os termos e condições',
+  }),
+});
 
 export const DripZoneArraySchema = z.array(DripZoneSchema);
 export type DripZone = z.infer<typeof DripZoneSchema>;
 export type Schedule = z.infer<typeof ScheduleSchema>;
 export type HistoryFilter = z.infer<typeof historyFilterSchema>;
+export type SignUpData = z.infer<typeof signUpSchema>;
