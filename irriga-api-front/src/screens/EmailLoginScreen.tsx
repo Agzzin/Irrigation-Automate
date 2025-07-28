@@ -16,8 +16,10 @@ import {useNavigation} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {RootStackParamList} from '../types/RootStackParamList';
-import { useAuth } from '../contexts/AuthContext';
+import {useAuth} from '../contexts/AuthContext';
 import FloatingLabelInput from '../components/FloatingLabelInput';
+import {loginSchema} from '../controllers/zodSchema';
+import {z, ZodError} from 'zod';
 
 type EmailLoginScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -36,47 +38,56 @@ const EmailLoginScreen: React.FC = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const {login} = useAuth()
+  const {login} = useAuth();
 
   const handleLogin = async () => {
-  const emailTrim = email.trim();
-  const passwordTrim = password.trim();
+    try {
+      // valida dados com zod
+      const data = loginSchema.parse({
+        email: email.trim(),
+        senha: password.trim(),
+      });
 
-  try {
-    setLoading(true);
-    setErrorMsg(null);
+      setLoading(true);
+      setErrorMsg(null);
 
-    const response = await fetch(LOGIN_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: emailTrim, senha: passwordTrim }),
-    });
+      const response = await fetch(LOGIN_URL, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({email: data.email, senha: data.senha}),
+      });
 
-    const raw = await response.text();
-    console.log('LOGIN →', response.status, raw);
+      const raw = await response.text();
+      console.log('LOGIN →', response.status, raw);
 
-    if (!response.ok) {
-      let mensagem = `Erro ${response.status}`;
-      try {
-        mensagem = JSON.parse(raw).message || mensagem;
-      } catch (_) {}
-      setErrorMsg(mensagem);
-      return;
+      if (!response.ok) {
+        let mensagem = `Erro ${response.status}`;
+        try {
+          mensagem = JSON.parse(raw).message || mensagem;
+        } catch (_) {}
+        setErrorMsg(mensagem);
+        return;
+      }
+
+      const {token, usuario} = JSON.parse(raw);
+
+      await login(token, usuario);
+
+      console.log('Usuário autenticado:', usuario);
+      navigation.navigate('InitialPage');
+    } catch (err: unknown) {
+      if (err instanceof ZodError) {
+        setErrorMsg(err.issues[0].message);
+      } else if (err instanceof Error) {
+        setErrorMsg(err.message);
+      } else {
+        setErrorMsg('Erro desconhecido');
+      }
+    } finally {
+      setLoading(false);
     }
+  };
 
-    const { token, usuario } = JSON.parse(raw);
-
-    await login(token, usuario);
-
-    console.log('Usuário autenticado:', usuario);
-    navigation.navigate('InitialPage');
-  } catch (err) {
-    console.error('Falha de rede', err);
-    setErrorMsg('Não foi possível conectar ao servidor.');
-  } finally {
-    setLoading(false);
-  }
-};
   return (
     <View style={styles.container}>
       <View style={styles.logoContainer}>
@@ -118,7 +129,8 @@ const EmailLoginScreen: React.FC = () => {
           />
           <Text style={styles.rememberMeText}>Lembrar-me</Text>
         </View>
-        <TouchableOpacity onPress={() => navigation.navigate('AccountRecovery')}>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('AccountRecovery')}>
           <Text style={styles.forgotText}>Esqueci a senha?</Text>
         </TouchableOpacity>
       </View>
