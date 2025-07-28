@@ -100,6 +100,20 @@ export const resetPasswordSchema = z.object({
   email: z.string().email({ message: 'E-mail inválido' }),
 });
 
+export const codeSchema = z.object({
+  code: z
+    .string()
+    .min(6, 'O código deve ter pelo menos 6 dígitos')
+    .max(6, 'O código deve ter no máximo 6 dígitos')
+    .regex(/^\d+$/, 'O código deve conter apenas números'),
+});
+
+export const phoneSchema = z.object({
+  phoneNumber: z
+    .string()
+    .regex(/^\+\d{10,15}$/, 'Número inválido. Use o formato +5511999999999'),
+});
+
 export const DripZoneArraySchema = z.array(DripZoneSchema);
 export type DripZone = z.infer<typeof DripZoneSchema>;
 export type Schedule = z.infer<typeof ScheduleSchema>;
