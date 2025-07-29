@@ -5,16 +5,20 @@ import {
   Animated,
   StyleSheet,
   TextInputProps,
+  ViewStyle,
 } from 'react-native';
 
 interface FloatingLabelInputProps extends TextInputProps {
   label: string;
+  containerStyle?: ViewStyle;
+  rightComponent?: React.ReactNode; 
 }
 
 const FloatingLabelInput: React.FC<FloatingLabelInputProps> = ({
   label,
   value,
   onChangeText,
+  containerStyle,
   ...rest
 }) => {
   const [isFocused, setIsFocused] = useState(false);
@@ -30,7 +34,7 @@ const FloatingLabelInput: React.FC<FloatingLabelInputProps> = ({
 
   const labelStyle = {
     position: 'absolute' as const,
-    left: 30,
+    left: 10,
     top: animatedIsFocused.interpolate({ inputRange: [0, 1], outputRange: [18, -10] }),
     fontSize: animatedIsFocused.interpolate({ inputRange: [0, 1], outputRange: [14, 12] }),
     color: isFocused ? '#00CB21' : rest.placeholderTextColor || '#fff',
@@ -45,15 +49,16 @@ const FloatingLabelInput: React.FC<FloatingLabelInputProps> = ({
   });
 
   return (
-    <View style={{ paddingTop: 25, marginBottom: 20 }}>
+    <View style={[styles.container, containerStyle]}>
       <Animated.Text style={labelStyle}>{label}</Animated.Text>
       <Animated.View style={[styles.inputContainer, { borderBottomColor: borderColor }]}>
         <TextInput
           value={value}
           onChangeText={onChangeText}
-          style={styles.input}
+          style={[styles.input, rest.style]}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
+          placeholder="" 
           {...rest}
         />
       </Animated.View>
@@ -62,15 +67,21 @@ const FloatingLabelInput: React.FC<FloatingLabelInputProps> = ({
 };
 
 const styles = StyleSheet.create({
+  container: {
+    width: '100%', 
+    paddingTop: 18,
+    marginBottom: 20,
+  },
   inputContainer: {
-    borderBottomWidth: 1,
+    width: '100%', 
   },
   input: {
     height: 40,
     fontSize: 16,
     color: '#fff',
-    padding: 0,
+    padding: 10, 
     backgroundColor: 'transparent',
+    width: '100%', 
   },
 });
 

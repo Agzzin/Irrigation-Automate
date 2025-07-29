@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import {
   View,
   Text,
@@ -9,12 +9,13 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../types/RootStackParamList';
+import {useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {RootStackParamList} from '../types/RootStackParamList';
 import FloatingLabelInput from '../components/FloatingLabelInput';
-import { signUpSchema } from '../controllers/zodSchema';
-import { z } from 'zod';
+import {signUpSchema} from '../controllers/zodSchema';
+import {z} from 'zod';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 type SignUpNav = NativeStackNavigationProp<RootStackParamList, 'InitialPage'>;
 
@@ -26,28 +27,29 @@ const SignUpScreen = () => {
   const [senha, setSenha] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSignUp = async () => {
     try {
-      const data = signUpSchema.parse({ nome, email, senha, rememberMe });
+      const data = signUpSchema.parse({nome, email, senha, rememberMe});
 
       setLoading(true);
 
       const response = await fetch(
-        'https://8b4e-200-106-218-64.ngrok-free.app/usuarios/signup',
+        'https://2788511b7480.ngrok-free.app/usuarios/signup',
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
             nome: data.nome,
             email: data.email,
             senha: data.senha,
           }),
-        }
+        },
       );
 
       if (!response.ok) {
-        const { message } = await response.json();
+        const {message} = await response.json();
         throw new Error(message || 'Erro ao cadastrar');
       }
 
@@ -72,39 +74,60 @@ const SignUpScreen = () => {
           style={styles.logo}
         />
         <View style={styles.titleContainer}>
-          <Text style={styles.title}>Hello,</Text>
-          <Text style={styles.subtitle}>SignUp!</Text>
+          <Text style={styles.title}>Olá,</Text>
+          <Text style={styles.subtitle}>Inscreva-se!</Text>
         </View>
       </View>
 
-      <View style={{ alignItems: 'center', width: '100%' }}>
+      <View
+        style={{
+          alignItems: 'center',
+          width: '100%',
+          paddingHorizontal: 20,
+          position: 'relative',
+        }}>
         <FloatingLabelInput
-          label="NOME"
+          label="Nome"
           value={nome}
           onChangeText={setNome}
           keyboardType="default"
           autoCapitalize="words"
           placeholderTextColor="#fff"
-          style={[styles.input, { width: '90%' }]}
+          containerStyle={{width: '100%'}}
         />
         <FloatingLabelInput
-          label="EMAIL"
+          label="Email"
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
           placeholderTextColor="#fff"
-          style={[styles.input, { width: '90%' }]}
+          containerStyle={{width: '100%'}}
         />
-        <FloatingLabelInput
-          label="SENHA"
-          value={senha}
-          onChangeText={setSenha}
-          secureTextEntry
-          autoCapitalize="none"
-          placeholderTextColor="#fff"
-          style={[styles.input, { width: '90%' }]}
-        />
+        <View
+          style={{flexDirection: 'row', alignItems: 'center', width: '100%'}}>
+          <FloatingLabelInput
+            label="Senha"
+            value={senha}
+            onChangeText={setSenha}
+            secureTextEntry={!showPassword}
+            autoCapitalize="none"
+            placeholderTextColor="#fff"
+            containerStyle={{flex: 1}}
+          />
+          <TouchableOpacity
+            style={{
+              padding: 5,
+              marginLeft: 10,
+            }}
+            onPress={() => setShowPassword(!showPassword)}>
+            <Icon
+              name={showPassword ? 'visibility' : 'visibility-off'}
+              size={24}
+              color="#fff"
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.optionsRow}>
@@ -112,10 +135,10 @@ const SignUpScreen = () => {
           <Switch
             value={rememberMe}
             onValueChange={setRememberMe}
-            trackColor={{ false: '#767577', true: '#00CB21' }}
+            trackColor={{false: '#767577', true: '#00CB21'}}
             thumbColor={rememberMe ? '#fff' : '#f4f3f4'}
             ios_backgroundColor="#3e3e3e"
-            style={{ transform: [{ scaleX: 1.0 }, { scaleY: 0.8 }] }}
+            style={{transform: [{scaleX: 1.0}, {scaleY: 1.0}]}}
           />
           <Text style={styles.rememberMeText}>
             Eu aceito os termos {'\n'}e condições do app
@@ -128,10 +151,9 @@ const SignUpScreen = () => {
       </View>
 
       <TouchableOpacity
-        style={[styles.buttonEntrar, loading && { opacity: 0.6 }]}
+        style={[styles.buttonEntrar, loading && {opacity: 0.6}]}
         onPress={handleSignUp}
-        disabled={loading}
-      >
+        disabled={loading}>
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
@@ -143,7 +165,6 @@ const SignUpScreen = () => {
 };
 
 export default SignUpScreen;
-
 
 const styles = StyleSheet.create({
   container: {
@@ -162,13 +183,13 @@ const styles = StyleSheet.create({
     left: -70,
   },
   logo: {
-    width: 400,
+    width: 430,
     height: 380,
     marginBottom: 20,
   },
   title: {
     color: '#FFFFFF',
-    fontSize: 30,
+    fontSize: 50,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 0,
@@ -176,7 +197,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     color: '#ffffff',
-    fontSize: 60,
+    fontSize: 43,
     fontWeight: 'bold',
     textAlign: 'center',
     marginTop: 0,

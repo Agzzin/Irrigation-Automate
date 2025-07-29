@@ -190,7 +190,7 @@ const DripZonesScreen = () => {
       };
 
       const response = await fetch(
-        'https://a9eb1aaadc1f.ngrok-free.app/api/zones',
+        'https://2788511b7480.ngrok-free.app/api/zones',
         {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
