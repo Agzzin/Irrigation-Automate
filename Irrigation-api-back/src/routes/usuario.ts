@@ -23,11 +23,14 @@ router.post('/signup', async (req: Request, res: Response): Promise<void> => {
   try {
     const result = signupSchema.safeParse(req.body);
     if (!result.success) {
-      res.status(400).json({ message: 'Dados inválidos', errors: result.error.flatten().fieldErrors });
+      res.status(400).json({
+        message: 'Dados inválidos',
+        errors: result.error.flatten().fieldErrors,
+      });
       return;
     }
 
-    const { nome, email, senha, tenantId } = result.data;
+    const { nome, email, senha } = result.data;
 
     const existe = await prisma.usuario.findUnique({ where: { email } });
     if (existe) {
@@ -35,20 +38,31 @@ router.post('/signup', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
-    if (!tenant) {
-      res.status(400).json({ message: 'Tenant não encontrado' });
-      return;
-    }
-
     const senhaHash = await bcrypt.hash(senha, 10);
+
+    const novoTenant = await prisma.tenant.create({
+      data: {
+        nome: `${nome} - tenant`, 
+      },
+    });
+
     const usuario = await prisma.usuario.create({
-      data: { nome, email, senha: senhaHash, tenantId },
+      data: {
+        nome,
+        email,
+        senha: senhaHash,
+        tenantId: novoTenant.id,
+      },
     });
 
     res.status(201).json({
-      message: 'Usuário criado com sucesso',
-      data: { id: usuario.id, nome: usuario.nome, email: usuario.email, tenantId: usuario.tenantId },
+      message: 'Usuário e tenant criados com sucesso',
+      data: {
+        id: usuario.id,
+        nome: usuario.nome,
+        email: usuario.email,
+        tenantId: usuario.tenantId,
+      },
     });
   } catch (error) {
     console.error('Erro interno no signup:', error);
