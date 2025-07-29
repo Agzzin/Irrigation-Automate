@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../prismaClient'; 
 import { signupSchema, loginSchema } from '../controllers/zodSchemas';
+import 'dotenv/config';
 
 interface TokenPayload {
   userId: number;
