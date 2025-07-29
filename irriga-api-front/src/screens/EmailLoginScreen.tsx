@@ -26,9 +26,9 @@ type EmailLoginScreenNavigationProp = StackNavigationProp<
   'InitialPage'
 >;
 
-const API_BASE_URL = 'https://c715-200-106-218-64.ngrok-free.app';
+const API_BASE_URL = 'https://2788511b7480.ngrok-free.app';
 
-const LOGIN_URL = `${API_BASE_URL}/login`;
+const LOGIN_URL = `${API_BASE_URL}/usuarios/login`;
 
 const EmailLoginScreen: React.FC = () => {
   const navigation = useNavigation<EmailLoginScreenNavigationProp>();
@@ -124,7 +124,7 @@ const EmailLoginScreen: React.FC = () => {
             onValueChange={setRememberMe}
             trackColor={{false: '#767577', true: '#00CB21'}}
             thumbColor={rememberMe ? '#fff' : '#f4f3f4'}
-            style={{transform: [{scaleX: 1.0}, {scaleY: 0.8}]}}
+            style={{transform: [{scaleX: 1.0}, {scaleY: 1.0}]}}
           />
           <Text style={styles.rememberMeText}>Lembrar-me</Text>
         </View>
