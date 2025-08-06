@@ -57,7 +57,7 @@ export function ZonesProvider({children}: ZonesProviderProps) {
 
   const toggleZoneStatus = async (zone: Zone) => {
     const newStatus = zone.status === 'active' ? 'inactive' : 'active';
-    await fetch(`https://2788511b7480.ngrok-free.app/api/zones/${zone.id}`, {
+    await fetch(`https://1be7f0a325f8.ngrok-free.app/api/zones/${zone.id}`, {
       method: 'PUT',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({...zone, status: newStatus}),
@@ -74,7 +74,7 @@ export function ZonesProvider({children}: ZonesProviderProps) {
 }
 
 async function fetchZones(): Promise<Zone[]> {
-  const res = await fetch('https://2788511b7480.ngrok-free.app/api/zones');
+  const res = await fetch('https://1be7f0a325f8.ngrok-free.app/api/zones');
   if (!res.ok) throw new Error('Erro ao buscar zonas');
   return res.json();
 }

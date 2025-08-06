@@ -6,7 +6,7 @@ import {
   Image,
   TouchableOpacity,
   Alert,
-  ActivityIndicator, 
+  ActivityIndicator,
 } from 'react-native';
 import {
   GoogleSignin,
@@ -23,8 +23,8 @@ import PhoneIcon from '../../assets/icons/phone.svg';
 import EnvelopeIcon from '../../assets/icons/envelope.svg';
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import { RootStackParamList } from '../types/RootStackParamList';
-import { AuthToken } from '../services/auth';
+import {RootStackParamList} from '../types/RootStackParamList';
+import {AuthToken} from '../services/auth';
 
 interface UserProfile {
   id: string;
@@ -42,16 +42,16 @@ interface FacebookLoginProps {
   onLogoutSuccess?: () => void;
 }
 
-const WEB_CLIENT_ID =
-  '363423156217-fablvceko5uld16gjqn0605kloag1vsr.apps.googleusercontent.com';
-
-GoogleSignin.configure({
+// Configuração do Google Sign-In
+const GOOGLE_CONFIG = {
   webClientId:
     '363423156217-fablvceko5uld16gjqn0605kloag1vsr.apps.googleusercontent.com',
-  offlineAccess: true,
   iosClientId:
     '363423156217-26chv84thgpuif38uh7i12fb9mpmkvot.apps.googleusercontent.com',
-});
+  offlineAccess: true,
+  forceCodeForRefreshToken: true,
+  scopes: ['profile', 'email'],
+};
 
 const WelcomeScreen = () => {
   const [userInfo, setUserInfo] = useState<any | null>(null);
@@ -61,80 +61,116 @@ const WelcomeScreen = () => {
   );
   const [loading, setLoading] = useState<boolean>(false);
   const [loading1, setLoading1] = useState<boolean>(false);
-
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   useEffect(() => {
     Settings.initializeSDK();
     configureGoogleSignIn();
     checkCurrentFacebookAccessToken();
+    checkSignedInUser();
 
     AuthToken.get().then(token => {
       if (token) {
         navigation.reset({
           index: 0,
-          routes: [{ name: 'BottomTabs' }],
+          routes: [{name: 'BottomTabs'}],
         });
       }
     });
   }, []);
 
-  const handleBotao = async () => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setLoading(false);
-  };
-  const handleBotao1 = async () => {
-    setLoading1(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setLoading1(false);
+  const checkSignedInUser = async () => {
+    try {
+      const isSignedIn = (await GoogleSignin.getCurrentUser()) !== null;
+      if (isSignedIn) {
+        const currentUser = await GoogleSignin.getCurrentUser();
+        console.log('Usuário já logado:', currentUser);
+        if (currentUser) {
+          setUserInfo(currentUser);
+        }
+      }
+    } catch (error) {
+      console.log('Nenhum usuário logado ou erro ao verificar:', error);
+    }
   };
 
-  // --- GOOGLE SIGN-IN ---
-  const configureGoogleSignIn = () => {
-    GoogleSignin.configure({
-      webClientId: WEB_CLIENT_ID,
-      offlineAccess: true,
-      iosClientId:
-        '363423156217-26chv84thgpuif38uh7i12fb9mpmkvot.apps.googleusercontent.com',
-    });
+  const configureGoogleSignIn = async () => {
+    try {
+      await GoogleSignin.configure(GOOGLE_CONFIG);
+      console.log('Google Sign-In configurado com sucesso');
+    } catch (error) {
+      console.error('Erro na configuração do Google Sign-In:', error);
+      setError('Erro na configuração do Google Sign-In');
+    }
   };
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
+    setError(null);
+
     try {
-      await GoogleSignin.hasPlayServices();
-      const user = await GoogleSignin.signIn();
-      setUserInfo(user);
-      setError(null);
-      console.log('User Info:', user);
-      if (
-        typeof user === 'object' &&
-        user !== null &&
-        'idToken' in user &&
-        typeof user.idToken === 'string' &&
-        'user' in user &&
-        typeof user.user === 'object' &&
-        user.user !== null &&
-        'email' in user.user &&
-        typeof user.user.email === 'string'
-      ) {
-        Alert.alert('Sucesso', `Logado como: ${user.user.email}`);
+      await GoogleSignin.hasPlayServices({
+        showPlayServicesUpdateDialog: true,
+      });
+
+      const userInfo = await GoogleSignin.signIn();
+      const tokens = await GoogleSignin.getTokens();
+
+      if (!tokens.idToken) {
+        throw new Error('Token não encontrado na resposta do Google');
       }
-    } catch (err: any) {
-      if (err.code === statusCodes.SIGN_IN_CANCELLED) {
-        setError('Login cancelado pelo usuário.');
-      } else if (err.code === statusCodes.IN_PROGRESS) {
-        setError('Login em andamento.');
-      } else if (err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        setError('Google Play Services não disponível ou desatualizado.');
-      } else {
-        setError(`Erro de login: ${err.message}`);
-        console.error('Google Sign-In Error:', err);
+
+      console.log('Login bem-sucedido:', {
+        userInfo,
+        idToken: tokens.idToken,
+        accessToken: tokens.accessToken,
+      });
+
+      await AuthToken.set(tokens.idToken);
+      navigation.reset({
+        index: 0,
+        routes: [{name: 'BottomTabs'}],
+      });
+    } catch (error: any) {
+      let errorMessage = 'Erro durante o login';
+
+      if (error.code) {
+        switch (error.code) {
+          case statusCodes.SIGN_IN_CANCELLED:
+            errorMessage = 'Login cancelado pelo usuário';
+            break;
+          case statusCodes.IN_PROGRESS:
+            errorMessage = 'Operação já em progresso';
+            break;
+          case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
+            errorMessage = 'Google Play Services não disponível';
+            break;
+          case '12501': 
+            errorMessage = 'Login cancelado';
+            break;
+          default:
+            errorMessage = `Erro: ${error.code} - ${error.message}`;
+        }
       }
-      setUserInfo(null);
+
+      console.error('Erro detalhado:', error);
+      setError(errorMessage);
+      Alert.alert('Erro', errorMessage);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
+  };
+
+  const handleGoogleSignOut = async () => {
+    try {
+      await GoogleSignin.signOut();
+      setUserInfo(null);
+      await AuthToken.remove();
+      console.log('Logout realizado com sucesso');
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+    }
   };
 
   // --- FACEBOOK SIGN-IN ---
@@ -195,7 +231,7 @@ const WelcomeScreen = () => {
         if (error) {
           Alert.alert('Erro ao buscar perfil:', error.toString());
           console.error('Erro ao buscar perfil do Facebook:', error);
-          setUserInfoFacebook(null); 
+          setUserInfoFacebook(null);
         } else {
           const profile: UserProfile = result;
           setUserInfo(profile);
@@ -226,7 +262,7 @@ const WelcomeScreen = () => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.buttonAPIs}
+          style={[styles.buttonAPIs, loading && styles.disabledButton]}
           onPress={handleGoogleSignIn}
           disabled={loading}>
           {loading ? (
@@ -235,17 +271,15 @@ const WelcomeScreen = () => {
             <>
               <Image
                 source={require('../../assets/icons/google.png')}
-                style={{width: 24, height: 24}}
+                style={styles.icon}
               />
-              <Text style={styles.subscribeText}>
-                Continuar com o {'\n'}Google
-              </Text>
+              <Text style={styles.subscribeText}>Continuar com o Google</Text>
             </>
           )}
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.buttonAPIs}
+          style={[styles.buttonAPIs, loading1 && styles.disabledButton]}
           onPress={handleFacebookLogin}
           disabled={loading1}>
           {loading1 ? (
@@ -254,11 +288,9 @@ const WelcomeScreen = () => {
             <>
               <Image
                 source={require('../../assets/icons/facebook.png')}
-                style={{width: 24, height: 24}}
+                style={styles.icon}
               />
-              <Text style={styles.subscribeText}>
-                Continuar com o {'\n'}Facebook
-              </Text>
+              <Text style={styles.subscribeText}>Continuar com o Facebook</Text>
             </>
           )}
         </TouchableOpacity>
@@ -268,14 +300,18 @@ const WelcomeScreen = () => {
           onPress={() => navigation.navigate('SmsPage')}>
           <PhoneIcon width={24} height={24} color="#ffffff" />
           <Text style={styles.subscribeText}>
-            Continuar com um{'\n'}número de telefone
+            Continuar com {'\n'} número de telefone
           </Text>
         </TouchableOpacity>
 
+        {error && <Text style={styles.errorText}>{error}</Text>}
+
         <View>
           <Text style={styles.description}>
-            Already have an account?
-            <Text style={{color: '#00CB21'}} onPress={() => navigation.navigate('EmailLoginScreen')}>
+            Já tem uma conta?
+            <Text
+              style={{color: '#00CB21'}}
+              onPress={() => navigation.navigate('EmailLoginScreen')}>
               {' '}
               Login
             </Text>
@@ -350,6 +386,20 @@ const styles = StyleSheet.create({
     marginHorizontal: 24,
     flexDirection: 'row',
     gap: 15,
+  },
+
+  disabledButton: {
+    opacity: 0.6,
+  },
+  icon: {
+    width: 24,
+    height: 24,
+    marginRight: 10,
+  },
+  errorText: {
+    color: 'red',
+    textAlign: 'center',
+    marginTop: 10,
   },
 });
 

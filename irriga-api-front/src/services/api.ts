@@ -3,7 +3,7 @@ import { Zone, HistoryEvent, ZoneId } from '../types/history';
 
  const createApiService = () => {
   const { token } = useAuth();
-  const apiBaseUrl = 'https://2788511b7480.ngrok-free.app/api'; 
+  const apiBaseUrl = 'https://1be7f0a325f8.ngrok-free.app/api'; 
 
   const authFetch = async (endpoint: string, options: RequestInit = {}) => {
     const url = `${apiBaseUrl}${endpoint}`;
