@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,10 +9,6 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import {
-  GoogleSignin,
-  statusCodes,
-} from '@react-native-google-signin/google-signin';
-import {
   AccessToken,
   GraphRequest,
   GraphRequestManager,
@@ -21,10 +17,14 @@ import {
 } from 'react-native-fbsdk-next';
 import PhoneIcon from '../../assets/icons/phone.svg';
 import EnvelopeIcon from '../../assets/icons/envelope.svg';
-import {useNavigation} from '@react-navigation/native';
-import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {RootStackParamList} from '../types/RootStackParamList';
-import {AuthToken} from '../services/auth';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types/RootStackParamList';
+import { AuthToken } from '../services/auth';
+import {
+  configureGoogleSignIn,
+  signInWithGoogle,
+} from '../services/GoogleAuth';
 
 interface UserProfile {
   id: string;
@@ -37,165 +37,83 @@ interface UserProfile {
   };
 }
 
-interface FacebookLoginProps {
-  onLoginSuccess?: (userInfo: UserProfile) => void;
-  onLogoutSuccess?: () => void;
-}
-
-// Configuração do Google Sign-In
-const GOOGLE_CONFIG = {
-  webClientId:
-    '363423156217-fablvceko5uld16gjqn0605kloag1vsr.apps.googleusercontent.com',
-  iosClientId:
-    '363423156217-26chv84thgpuif38uh7i12fb9mpmkvot.apps.googleusercontent.com',
-  offlineAccess: true,
-  forceCodeForRefreshToken: true,
-  scopes: ['profile', 'email'],
-};
-
 const WelcomeScreen = () => {
   const [userInfo, setUserInfo] = useState<any | null>(null);
+  const [userInfoFacebook, setUserInfoFacebook] = useState<UserProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [userInfoFacebook, setUserInfoFacebook] = useState<UserProfile | null>(
-    null,
-  );
-  const [loading, setLoading] = useState<boolean>(false);
-  const [loading1, setLoading1] = useState<boolean>(false);
-  const navigation =
-    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const [googleLoading, setGoogleLoading] = useState<boolean>(false);
+  const [facebookLoading, setFacebookLoading] = useState<boolean>(false);
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   useEffect(() => {
     Settings.initializeSDK();
-    configureGoogleSignIn();
+    configureGoogleSignIn().catch(error => {
+      console.error('Erro na configuração do Google:', error);
+    });
+    
     checkCurrentFacebookAccessToken();
-    checkSignedInUser();
+    checkExistingUser();
+  }, []);
 
-    AuthToken.get().then(token => {
+  const checkExistingUser = async () => {
+    try {
+      const token = await AuthToken.get();
       if (token) {
         navigation.reset({
           index: 0,
-          routes: [{name: 'BottomTabs'}],
+          routes: [{ name: 'BottomTabs' }],
         });
       }
-    });
-  }, []);
-
-  const checkSignedInUser = async () => {
-    try {
-      const isSignedIn = (await GoogleSignin.getCurrentUser()) !== null;
-      if (isSignedIn) {
-        const currentUser = await GoogleSignin.getCurrentUser();
-        console.log('Usuário já logado:', currentUser);
-        if (currentUser) {
-          setUserInfo(currentUser);
-        }
-      }
     } catch (error) {
-      console.log('Nenhum usuário logado ou erro ao verificar:', error);
+      console.error('Erro ao verificar usuário existente:', error);
     }
   };
 
-  const configureGoogleSignIn = async () => {
-    try {
-      await GoogleSignin.configure(GOOGLE_CONFIG);
-      console.log('Google Sign-In configurado com sucesso');
-    } catch (error) {
-      console.error('Erro na configuração do Google Sign-In:', error);
-      setError('Erro na configuração do Google Sign-In');
-    }
-  };
-
+  // --- GOOGLE SIGN-IN ---
   const handleGoogleSignIn = async () => {
-    setLoading(true);
+    setGoogleLoading(true);
     setError(null);
 
     try {
-      await GoogleSignin.hasPlayServices({
-        showPlayServicesUpdateDialog: true,
-      });
-
-      const userInfo = await GoogleSignin.signIn();
-      const tokens = await GoogleSignin.getTokens();
-
-      if (!tokens.idToken) {
-        throw new Error('Token não encontrado na resposta do Google');
-      }
-
-      console.log('Login bem-sucedido:', {
-        userInfo,
-        idToken: tokens.idToken,
-        accessToken: tokens.accessToken,
-      });
-
-      await AuthToken.set(tokens.idToken);
+      const userInfo = await signInWithGoogle();
       navigation.reset({
         index: 0,
-        routes: [{name: 'BottomTabs'}],
+        routes: [{ name: 'BottomTabs' }],
       });
     } catch (error: any) {
-      let errorMessage = 'Erro durante o login';
-
-      if (error.code) {
-        switch (error.code) {
-          case statusCodes.SIGN_IN_CANCELLED:
-            errorMessage = 'Login cancelado pelo usuário';
-            break;
-          case statusCodes.IN_PROGRESS:
-            errorMessage = 'Operação já em progresso';
-            break;
-          case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
-            errorMessage = 'Google Play Services não disponível';
-            break;
-          case '12501': 
-            errorMessage = 'Login cancelado';
-            break;
-          default:
-            errorMessage = `Erro: ${error.code} - ${error.message}`;
-        }
-      }
-
-      console.error('Erro detalhado:', error);
-      setError(errorMessage);
-      Alert.alert('Erro', errorMessage);
+      setError(error.message);
+      Alert.alert('Erro', error.message);
     } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGoogleSignOut = async () => {
-    try {
-      await GoogleSignin.signOut();
-      setUserInfo(null);
-      await AuthToken.remove();
-      console.log('Logout realizado com sucesso');
-    } catch (error) {
-      console.error('Erro ao fazer logout:', error);
+      setGoogleLoading(false);
     }
   };
 
   // --- FACEBOOK SIGN-IN ---
   const handleFacebookLogin = async () => {
-    setLoading1(true);
+    setFacebookLoading(true);
     try {
       const result = await LoginManager.logInWithPermissions([
         'public_profile',
         'email',
       ]);
+      
       if (result.isCancelled) {
         setError('Login do Facebook cancelado pelo usuário.');
-        setLoading1(false);
+        setFacebookLoading(false);
         return;
       }
+      
       const data = await AccessToken.getCurrentAccessToken();
       if (!data) {
         setError('Erro ao obter token de acesso do Facebook.');
-        setLoading1(false);
+        setFacebookLoading(false);
         return;
       }
+      
       fetchFacebookProfile(data.accessToken);
     } catch (error) {
       setError('Erro ao fazer login com o Facebook.');
-      setLoading1(false);
+      setFacebookLoading(false);
       console.error('Facebook Login Error:', error);
     }
   };
@@ -204,10 +122,6 @@ const WelcomeScreen = () => {
     try {
       const currentAccessToken = await AccessToken.getCurrentAccessToken();
       if (currentAccessToken) {
-        console.log(
-          'Token de acesso existente:',
-          currentAccessToken.accessToken,
-        );
         fetchFacebookProfile(currentAccessToken.accessToken);
       }
     } catch (error) {
@@ -227,16 +141,15 @@ const WelcomeScreen = () => {
         },
       },
       (error, result: any) => {
-        setLoading1(false);
+        setFacebookLoading(false);
         if (error) {
           Alert.alert('Erro ao buscar perfil:', error.toString());
           console.error('Erro ao buscar perfil do Facebook:', error);
           setUserInfoFacebook(null);
         } else {
           const profile: UserProfile = result;
-          setUserInfo(profile);
-          console.log('Perfil do Facebook obtido:', profile);
           setUserInfoFacebook(profile);
+          console.log('Perfil do Facebook obtido:', profile);
         }
       },
     );
@@ -262,10 +175,10 @@ const WelcomeScreen = () => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.buttonAPIs, loading && styles.disabledButton]}
+          style={[styles.buttonAPIs, googleLoading && styles.disabledButton]}
           onPress={handleGoogleSignIn}
-          disabled={loading}>
-          {loading ? (
+          disabled={googleLoading}>
+          {googleLoading ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
             <>
@@ -279,10 +192,10 @@ const WelcomeScreen = () => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.buttonAPIs, loading1 && styles.disabledButton]}
+          style={[styles.buttonAPIs, facebookLoading && styles.disabledButton]}
           onPress={handleFacebookLogin}
-          disabled={loading1}>
-          {loading1 ? (
+          disabled={facebookLoading}>
+          {facebookLoading ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
             <>
@@ -310,7 +223,7 @@ const WelcomeScreen = () => {
           <Text style={styles.description}>
             Já tem uma conta?
             <Text
-              style={{color: '#00CB21'}}
+              style={{ color: '#00CB21' }}
               onPress={() => navigation.navigate('EmailLoginScreen')}>
               {' '}
               Login
@@ -321,7 +234,6 @@ const WelcomeScreen = () => {
     </View>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
